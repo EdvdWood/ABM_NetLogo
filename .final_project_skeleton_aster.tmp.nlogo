@@ -40,7 +40,8 @@ turtles-own [
   current-destination          ;; the patch the agent is currently going towards, used for random walk
   path                         ;; the optimal path from source to destination --> see astaralgorithm.nls
   current-path                 ;; part of the path that is left to be traversed --> see astaralgorithm.nls
-  gender
+  gender                       ;; gender of the visitor / employee
+  enter-exit                   ;; exit through which the visitor entered.
 ]
 
 
@@ -96,11 +97,12 @@ to setup-visitors               ;; turtle procedure
     set heading  (heading + 45 - (random 90)) ;;set a random heading at the start so the agents walk randomly until they start to evacuate
     set current-speed 0.5       ;; set the current speed of the agent
   ; set current-speed 0.5 + random-float 0.5  ;; example to make this random
+    set enter-exit (random 4)   ;; randomly set the original entrance
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color blue              ;; set the color of the agent
     set evacuating? true       ;; agent is not evacuating at the start of the simulation
-    set familiar-with-exits? false  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
+    set familiar-with-exits? (random 100 < perc-familiar)  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
     choose-exit                 ;; call the procedure choose-exit to chose an exit that the agent will move to when evacuating
     set current-destination one-of patches with [pcolor = 9.9]  ;; when the agent is walking randomly at the beginning (before evacuating) the agent needs this as a destination
   ]
@@ -127,10 +129,19 @@ end
 
 to choose-exit
 
-  let nearest-exit min-one-of (patches with [pcolor = 14.]) [distance myself]
-  if-else familiar-with-exits?
-  [set destination nearest-exit]
-  [set destination one-of exit-north1]     ;; setting the exit choice to exit-north1, this is now done for all agents, but needs to be done based on familiarity
+  let nearest-exit min-one-of (patches with [pcolor = 14.8]) [distance myself]
+  (ifelse
+    familiar-with-exits? = true [
+      set destination nearest-exit]
+    enter-exit = 1 [
+      set destination min-one-of exit-north1]
+    enter-exit = 2 [
+      set destination min-one-of exit-north2]
+    enter-exit = 3 [
+      set destination min-one-of exit-west]
+    enter-exit = 4 [
+      set destination one-of exit-east])  ;; If agent is familiar, choose nearest exit, otherwise choose the exit through which the agent entered.
+  ;[set destination one-of exit-north1]     ;; setting the exit choice to exit-north1, this is now done for all agents, but needs to be done based on familiarity
  ;ifelse familiar-with-exits? 1           ;; ifelse loop
  ;[ set chosen-exit .... ]                ;; if the agent is familiar with the environment, choose the nearest exit as destination
  ;[ set chosen-exit .... ]                ;; else, choose main entrance as exit
@@ -311,7 +322,7 @@ SWITCH
 155
 verbose?
 verbose?
-0
+1
 1
 -1000
 
@@ -342,7 +353,7 @@ vision-distance
 vision-distance
 0
 10
-2.0
+1.0
 1
 1
 NIL
@@ -404,7 +415,7 @@ num-visitors
 num-visitors
 0
 400
-10.0
+20.0
 1
 1
 NIL
@@ -419,7 +430,7 @@ num-staff
 num-staff
 0
 100
-7.0
+13.0
 1
 1
 NIL
@@ -435,6 +446,21 @@ evacuating?
 0
 1
 -1000
+
+SLIDER
+17
+546
+189
+579
+perc-familiar
+perc-familiar
+0
+100
+50.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
