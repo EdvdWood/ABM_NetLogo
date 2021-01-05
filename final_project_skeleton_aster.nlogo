@@ -7,7 +7,7 @@
 
 __includes [ "utilities.nls" "astaralgorithm.nls"]      ;; utilities: all the boring but important stuff not related to content astaralgorithm: A* path finding algorithm
 
-;; Edward is lief
+
 globals [
 
   exit-north1                  ;; exit on top (left one of the two doors)
@@ -25,6 +25,7 @@ globals [
   astar_open                   ;; the open list of patches --> see astaralgorithm.nls
   astar_closed                 ;; the closed list of patches --> see astaralgorithm.nls
   optimal-path                 ;; the optimal path, list of patches from source to destination --> see astaralgorithm.nls
+  alarm?
 ]
 
 breed [visitors visitor]       ;; agents that are visitors
@@ -32,12 +33,14 @@ breed [employees employee]     ;; agents that are employees
 
 turtles-own [
   current-speed                ;; the current walking speed of the agent
+  running-speed
   destination                  ;; the exit the agent will choose to evacaute through [exit-north1, exit-north2, exit-south, exit-east]
   familiar-with-exits?         ;; is the agent familiar with where the exits are?
   ;evacuating?                 ;; is the agent evacuating or not?
   current-destination          ;; the patch the agent is currently going towards, used for random walk
   path                         ;; the optimal path from source to destination --> see astaralgorithm.nls
   current-path                 ;; part of the path that is left to be traversed --> see astaralgorithm.nls
+  gender
 ]
 
 
@@ -66,6 +69,7 @@ end
 
 to go                           ;; observer procedure
   if ticks = end_of_simulation [stop] ;; make a stop condition
+  if ticks > 30 [set alarm? true evacuate] ;; turn on the alarm
   ask visitors [move]           ;; asking the visitors to do the move procedure
   tick                          ;; next time step
 
@@ -94,7 +98,7 @@ to setup-visitors               ;; turtle procedure
   ; set current-speed 0.5 + random-float 0.5  ;; example to make this random
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
-    set color blue              ;; set the color of the agents
+    set color blue              ;; set the color of the agent
     set evacuating? true       ;; agent is not evacuating at the start of the simulation
     set familiar-with-exits? false  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
     choose-exit                 ;; call the procedure choose-exit to chose an exit that the agent will move to when evacuating
@@ -108,6 +112,8 @@ to setup-employees              ;;turtle procedure
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color green             ;; set the color of the agents
+    set gender one-of ["male" "female"]
+    if-else gender = "male" [set current-speed 1 set running-speed 1.5] [set current-speed 0.9 set running-speed 1.4]
     set familiar-with-exits? true  ;; employees are familiar with the building, thus familiar-with exits? 1
     choose-exit                 ;; call the procedure choose-exit to chose an exit that the agent will move to when evacuating
   ]
@@ -120,7 +126,11 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to choose-exit
-  set destination one-of exit-north1      ;; setting the exit choice to exit-north1, this is now done for all agents, but needs to be done based on familiarity
+
+  let nearest-exit min-one-of patches with [pcolor = red] [distance myself]
+  if-else familiar-with-exits?
+  [set destination nearest-exit]
+  [set destination exit-north1]     ;; setting the exit choice to exit-north1, this is now done for all agents, but needs to be done based on familiarity
  ;ifelse familiar-with-exits? 1           ;; ifelse loop
  ;[ set chosen-exit .... ]                ;; if the agent is familiar with the environment, choose the nearest exit as destination
  ;[ set chosen-exit .... ]                ;; else, choose main entrance as exit
@@ -128,6 +138,7 @@ end
 
 
 to move                                   ;;turtle procedure
+  crowd-control
   if-else  evacuating?                    ;; ifelse
   [ set current-destination destination   ;; if agent is evacauting, change heading to "destination", which is the chosen exit
     set path find-a-path patch-here destination
@@ -139,14 +150,32 @@ to move                                   ;;turtle procedure
     [set current-destination one-of patches with [pcolor = 9.9] ;;setting the new current-destination to a white patch
       face current-destination            ;; and face that destination
       avoid-obstacles                     ;; let the agent avoid obstacles while randomly walking
+
     ]
   ]
 
+end
 
-
-
+;; make sure walking speed is reduced when in space is crowded and no more than 8 building users per square meter
+to crowd-control
+  if (count [turtles-here] of patch-here) > 7 [rt 45] ;; if there 8 building users on a patch, buildings users change direction 45 degrees.
+  ;; Note to self: all building users move simultaniously and 1 patch is 1m2, so not entirely reaslistic. Also, this restriction should not hold for the exits where buildingusers accumulate.
+  set current-speed current-speed * (1 / (count [turtles-here] of patch-here) ^ 2) ;; slows down buildings users non-linearly
+  set running-speed running-speed * (1 / (count [turtles-here] of patch-here) ^ 2)
+  ;; Note to self: could maybe be enhanced somehow in combination with using "patches in-radius"
 
 end
+
+to evacuate
+  ask visitors [
+    if one-of employees in-cone vision-distance vision-angle [set familiar-with-exits? true] ;; visitor is being told by employee where nearest exit is
+    choose-exit]
+
+  ask employees [
+    if count visitors in-cone vision-distance vision-angle = 0 [move]] ;; employees will leave via nearest exit when all visitor within visibility have left
+
+end
+
 
 ; make the turtle traverse (move through) the path all the way to the destination patch
 to move-along-path
@@ -166,7 +195,7 @@ end
 
 to go-to-next-patch-in-current-path
   face first current-path
-  fd 1
+  fd running-speed
   move-to first current-path
   set current-path remove-item 0 current-path
 end
@@ -313,7 +342,7 @@ vision-distance
 vision-distance
 0
 10
-3.0
+2.0
 1
 1
 NIL
@@ -328,7 +357,7 @@ vision-angle
 vision-angle
 0
 360
-180.0
+158.0
 1
 1
 NIL
