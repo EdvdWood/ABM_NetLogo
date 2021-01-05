@@ -127,10 +127,10 @@ end
 
 to choose-exit
 
-  let nearest-exit min-one-of patches with [pcolor = red] [distance myself]
+  let nearest-exit min-one-of (patches with [pcolor = 14.8]) [distance myself]
   if-else familiar-with-exits?
   [set destination nearest-exit]
-  [set destination exit-north1]     ;; setting the exit choice to exit-north1, this is now done for all agents, but needs to be done based on familiarity
+  [set destination one-of exit-north1]     ;; setting the exit choice to exit-north1, this is now done for all agents, but needs to be done based on familiarity
  ;ifelse familiar-with-exits? 1           ;; ifelse loop
  ;[ set chosen-exit .... ]                ;; if the agent is familiar with the environment, choose the nearest exit as destination
  ;[ set chosen-exit .... ]                ;; else, choose main entrance as exit
