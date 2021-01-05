@@ -7,7 +7,7 @@
 
 __includes [ "utilities.nls" "astaralgorithm.nls"]      ;; utilities: all the boring but important stuff not related to content astaralgorithm: A* path finding algorithm
 
-;; Edward is lief
+;
 globals [
 
   exit-north1                  ;; exit on top (left one of the two doors)
