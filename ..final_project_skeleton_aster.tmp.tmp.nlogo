@@ -114,7 +114,7 @@ to setup-employees              ;;turtle procedure
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color green             ;; set the color of the agents
-    set enter-exit 1
+
     set gender one-of ["male" "female"]
     if-else gender = "male" [set current-speed 1 set running-speed 1.5] [set current-speed 0.9 set running-speed 1.4]
     set familiar-with-exits? true  ;; employees are familiar with the building, thus familiar-with exits? 1
@@ -137,11 +137,11 @@ to choose-exit
     enter-exit = 1 [
       set destination one-of exit-north1]
     enter-exit = 2 [
-      set destination one-of exit-north2]
+      set destination one-of exit-north1]
     enter-exit = 3 [
-      set destination one-of exit-east]
+      set destination one-of exit-north1]
     enter-exit = 4 [
-      set destination one-of exit-west]
+      set destination one-of exit-north1]
     [set destination one-of exit-north1]
     )  ;; If agent is familiar, choose nearest exit, otherwise choose the exit through which the agent entered.
   ;[set destination one-of exit-north1]     ;; setting the exit choice to exit-north1, this is now done for all agents, but needs to be done based on familiarity
