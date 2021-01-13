@@ -60,10 +60,10 @@ to setup
  ;random-seed 42                ;; choose to setup from a random seed or not, can be handy for debugging
   setupMap                      ;; setup the floor plan = part of the environment --> see utilities file, make sure to do this first, because for example the colours might be not perfectly white and black, so they are set to perfectly white and black for the code below to work
   set obstacles patches with [pcolor = black]                                           ;; make all black patches obstacles (obstacles are walls, furniture, etc..) which are used in the avoid-obstacles procedure
-  set exit-north1 patches with [(pcolor = 14.8) and (pxcor > 109) and (pxcor < 132 )]   ;; setup exit-north1: when the patches are red and within these coordinates, then it is this exit.
-  set exit-north2 patches with [(pcolor = red) and (pxcor <= 412) and (pxcor > 384)]    ;; setup exit-north2: when the patches are red and within these scoordinates, then it is this exit.
-  set exit-west patches with [(pcolor = red) and (pxcor <= 109) and (pxcor > 93)]       ;; setup exit-west: when the patches are red and within these scoordinates, then it is this exit.
-  set exit-east patches with [(pcolor = red) and (pxcor <= 500) and (pxcor > 475)]      ;; setup exit-east: when the patches are red and within these scoordinates, then it is this exit.
+  set exit-north1 patches with [(pcolor = 14.8) and (pxcor > 109) and (pxcor < 118 )]   ;; setup exit-north1: when the patches are red and within these coordinates, then it is this exit.
+  set exit-north2 patches with [(pcolor = 14.8) and (pxcor > 118) and (pxcor < 130)]    ;; setup exit-north2: when the patches are red and within these scoordinates, then it is this exit.
+  set exit-west patches with [(pcolor = 14.8) and (pxcor > 15) and (pxcor < 30)]       ;; setup exit-west: when the patches are red and within these scoordinates, then it is this exit.
+  set exit-east patches with [(pcolor = 14.8) and (pxcor > 145) and (pxcor < 160)]      ;; setup exit-east: when the patches are red and within these scoordinates, then it is this exit.
   set N-evacuated 0             ;; the global variable N-evacuated is 0 at the start of the simulation
   set end_of_simulation 300     ;; maximum amount of ticks for one simulation run
   set signs n-of 8 patches with [(pcolor = black) and (count neighbors with [pcolor = 9.9] > 1)] ;; setup 8 signs on obstacles (black patches) next to white patches (walking space)
@@ -141,14 +141,14 @@ to choose-exit
   (ifelse
     familiar-with-exits? = true [
       set destination nearest-exit]
-    ;enter-exit = 1 [
-     ; set destination one-of exit-north1]
-    ;enter-exit = 2 [
-     ; set destination one-of exit-north2]
-    ;enter-exit = 3 [
-     ; set destination one-of exit-west]
-    ;enter-exit = 4 [
-      ;set destination one-of exit-east]
+    enter-exit = 1 [
+      set destination one-of exit-north1]
+    enter-exit = 2 [
+      set destination one-of exit-north2]
+    enter-exit = 3 [
+      set destination one-of exit-west]
+    enter-exit = 4 [
+      set destination one-of exit-east]
     [set destination one-of exit-north1]
   )
   ]
@@ -492,7 +492,7 @@ perc-familiar
 perc-familiar
 0
 100
-63.0
+100.0
 1
 1
 NIL
