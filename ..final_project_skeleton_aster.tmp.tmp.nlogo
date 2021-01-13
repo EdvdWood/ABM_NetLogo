@@ -26,8 +26,6 @@ globals [
   astar_closed                 ;; the closed list of patches --> see astaralgorithm.nls
   optimal-path                 ;; the optimal path, list of patches from source to destination --> see astaralgorithm.nls
   alarm?
-  signs
-  danger-spots
 ]
 
 breed [visitors visitor]       ;; agents that are visitors
@@ -38,13 +36,12 @@ turtles-own [
   running-speed
   destination                  ;; the exit the agent will choose to evacaute through [exit-north1, exit-north2, exit-south, exit-east]
   familiar-with-exits?         ;; is the agent familiar with where the exits are?
-  evacuating?                 ;; is the agent evacuating or not?
+  ;evacuating?                 ;; is the agent evacuating or not?
   current-destination          ;; the patch the agent is currently going towards, used for random walk
   path                         ;; the optimal path from source to destination --> see astaralgorithm.nls
   current-path                 ;; part of the path that is left to be traversed --> see astaralgorithm.nls
   gender                       ;; gender of the visitor / employee
   enter-exit                   ;; exit through which the visitor entered.
-  fear-level
 ]
 
 
@@ -60,14 +57,12 @@ to setup
  ;random-seed 42                ;; choose to setup from a random seed or not, can be handy for debugging
   setupMap                      ;; setup the floor plan = part of the environment --> see utilities file, make sure to do this first, because for example the colours might be not perfectly white and black, so they are set to perfectly white and black for the code below to work
   set obstacles patches with [pcolor = black]                                           ;; make all black patches obstacles (obstacles are walls, furniture, etc..) which are used in the avoid-obstacles procedure
-  set exit-north1 patches with [(pcolor = 14.8) and (pxcor > 109) and (pxcor < 132 )]   ;; setup exit-north1: when the patches are red and within these coordinates, then it is this exit.
-  set exit-north2 patches with [(pcolor = red) and (pxcor <= 412) and (pxcor > 384)]    ;; setup exit-north2: when the patches are red and within these scoordinates, then it is this exit.
-  set exit-west patches with [(pcolor = red) and (pxcor <= 109) and (pxcor > 93)]       ;; setup exit-west: when the patches are red and within these scoordinates, then it is this exit.
-  set exit-east patches with [(pcolor = red) and (pxcor <= 500) and (pxcor > 475)]      ;; setup exit-east: when the patches are red and within these scoordinates, then it is this exit.
+  set exit-north1 patches with [(pcolor = 14.8) and (pxcor < 121) and (pxcor < 109 )]   ;; setup exit-north1: when the patches are red and within these coordinates, then it is this exit.
+  set exit-north2 patches with [(pcolor = 14.8) and (pxcor <= 140) and (pxcor > 121)]    ;; setup exit-north2: when the patches are red and within these scoordinates, then it is this exit.
+  set exit-west patches with [(pcolor = 14.8) and (pxcor <= 170) and (pxcor > 150)]       ;; setup exit-west: when the patches are red and within these scoordinates, then it is this exit.
+  set exit-east patches with [(pcolor = 14.8) and (pxcor <= 30) and (pxcor > 20)]      ;; setup exit-east: when the patches are red and within these scoordinates, then it is this exit.
   set N-evacuated 0             ;; the global variable N-evacuated is 0 at the start of the simulation
   set end_of_simulation 300     ;; maximum amount of ticks for one simulation run
-  set signs n-of 8 patches with [(pcolor = black) and (count neighbors with [pcolor = 9.9] > 1)] ;; setup 8 signs on obstacles (black patches) next to white patches (walking space)
-  set danger-spots n-of 5 patches with [(pcolor = 9.9) and (count patches in-radius 3 with [pcolor = 14.8] = 0)] ;; setup 5 danger-spots in the walking space, but not in radius of 3 of exits.
   setup-visitors                ;; ask turtles to perform the setup-visitors procedure
   setup-employees               ;; ask turtles to perform the setup-employees procedure
   reset-ticks                   ;; resets the tick counter to zero, goes at the end of setup procedure
@@ -106,11 +101,10 @@ to setup-visitors               ;; turtle procedure
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color blue              ;; set the color of the agent
-    set evacuating? false       ;; agent is not evacuating at the start of the simulation
+    set evacuating? true       ;; agent is not evacuating at the start of the simulation
     set familiar-with-exits? (random 100 < perc-familiar)  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
-    ;choose-exit                 ;; call the procedure choose-exit to choose an exit that the agent will move to when evacuating - Note_Joel: would remove this procedure here
+    choose-exit                 ;; call the procedure choose-exit to chose an exit that the agent will move to when evacuating
     set current-destination one-of patches with [pcolor = 9.9]  ;; when the agent is walking randomly at the beginning (before evacuating) the agent needs this as a destination
-    set fear-level 0
   ]
 end
 
@@ -120,8 +114,8 @@ to setup-employees              ;;turtle procedure
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color green             ;; set the color of the agents
+
     set gender one-of ["male" "female"]
-    set current-destination patch-here
     if-else gender = "male" [set current-speed 1 set running-speed 1.5] [set current-speed 0.9 set running-speed 1.4]
     set familiar-with-exits? true  ;; employees are familiar with the building, thus familiar-with exits? 1
     choose-exit                 ;; call the procedure choose-exit to chose an exit that the agent will move to when evacuating
@@ -137,22 +131,19 @@ end
 to choose-exit
 
   let nearest-exit min-one-of (patches with [pcolor = 14.8]) [distance myself]
-  if evacuating? = true [
   (ifelse
     familiar-with-exits? = true [
       set destination nearest-exit]
-    ;enter-exit = 1 [
-     ; set destination one-of exit-north1]
-    ;enter-exit = 2 [
-     ; set destination one-of exit-north2]
-    ;enter-exit = 3 [
-     ; set destination one-of exit-west]
-    ;enter-exit = 4 [
-      ;set destination one-of exit-east]
+    enter-exit = 1 [
+      set destination one-of exit-north1]
+    enter-exit = 2 [
+      set destination one-of exit-north1]
+    enter-exit = 3 [
+      set destination one-of exit-north1]
+    enter-exit = 4 [
+      set destination one-of exit-north1]
     [set destination one-of exit-north1]
-  )
-  ]
-  ;; If agent is familiar, choose nearest exit, otherwise choose the exit through which the agent entered.
+    )  ;; If agent is familiar, choose nearest exit, otherwise choose the exit through which the agent entered.
   ;[set destination one-of exit-north1]     ;; setting the exit choice to exit-north1, this is now done for all agents, but needs to be done based on familiarity
  ;ifelse familiar-with-exits? 1           ;; ifelse loop
  ;[ set chosen-exit .... ]                ;; if the agent is familiar with the environment, choose the nearest exit as destination
@@ -162,28 +153,25 @@ end
 
 to move                                   ;;turtle procedure
   crowd-control
-  if-else  evacuating? = true                   ;; ifelse
+  if-else  evacuating?                    ;; ifelse
   [ set current-destination destination   ;; if agent is evacauting, change heading to "destination", which is the chosen exit
     set path find-a-path patch-here destination
   set optimal-path path
   set current-path path
   move-along-path                         ;; and make the agent move to the destination via the path found
   ]
-  [ if-else patch-here = current-destination   ;; else (agent is not evacuating), if agent is already at the current-destination, look for a new current-destination
+  [ if patch-here = current-destination   ;; else (agent is not evacuating), if agent is already at the current-destination, look for a new current-destination
     [set current-destination one-of patches with [pcolor = 9.9] ;;setting the new current-destination to a white patch
       face current-destination            ;; and face that destination
-      avoid-obstacles  ]                   ;; let the agent avoid obstacles while randomly walking
-    [face current-destination
-      avoid-obstacles]
+      avoid-obstacles                     ;; let the agent avoid obstacles while randomly walking
 
-
-
+    ]
   ]
 
 end
 
-
-to crowd-control ;; make sure walking speed is reduced when in space is crowded and no more than 8 building users per square meter
+;; make sure walking speed is reduced when in space is crowded and no more than 8 building users per square meter
+to crowd-control
   if (count [turtles-here] of patch-here) > 7 [rt 45] ;; if there 8 building users on a patch, buildings users change direction 45 degrees.
   ;; Note to self: all building users move simultaniously and 1 patch is 1m2, so not entirely reaslistic. Also, this restriction should not hold for the exits where buildingusers accumulate.
   set current-speed current-speed * (1 / (count [turtles-here] of patch-here) ^ 2) ;; slows down buildings users non-linearly
@@ -193,47 +181,15 @@ to crowd-control ;; make sure walking speed is reduced when in space is crowded 
 end
 
 to evacuate
-   ask employees
-  [
-    let visitors-visible visitors in-cone vision-distance vision-angle
-    if count visitors-visible > 0 ;; if an employee sees a visitor
-    [ask visitors-visible ;;the visitor that is being looked at
-      [
-      set evacuating? true ;; decides to leave the building
-      set familiar-with-exits? true ;; is being told where nearest exit is
-      choose-exit ;; sets destination at nearest exit
-      ]
-    ]
-    if count visitors-visible = 0 [move] ;; employees will leave via nearest exit when all visitor within visibility have left
-  ]
-
   ask visitors [
-    set fear-level sum [fear-level] of visitors in-radius 5 / count(visitors in-radius 5) ;; set the fear level to the average level of fear of visitors in neighborhood
-    if fear-level > 0.6
-    [set evacuating? true
-      choose-exit]
+    if one-of employees in-cone vision-distance vision-angle [set familiar-with-exits? true] ;; visitor is being told by employee where nearest exit is
+    choose-exit]
 
-    let visitors-visible visitors in-cone vision-distance vision-angle
-    if min-one-of (danger-spots in-cone vision-distance vision-angle) [distance myself] = 1 ;;if a visitor can see the closest danger spot in its visible area
-    [ set evacuating? true ;; it decides to leave the building
-      choose-exit  ;; sets destination to exit
-      set fear-level 1 ;; its level of fear increases to 1
-    ]
-
-    if evacuating? = true [ ;; and tells other visitors in its visible area to do the same
-      ask visitors-visible [
-        set evacuating? true
-        choose-exit
-      ]
-    ]
-
-    if evacuating? = true and min-one-of (signs in-cone vision-distance vision-angle) [distance myself] = 1 and random 3 = 1 ;; if visitor can see the closest signs in its visible area, it has a probability 1/3 to actually see it
-    [set familiar-with-exits? true ;; the visitor becomes familiar with the nearest exit displayed on the sign
-     choose-exit ;; visitors sets destination at nearest exit
-    ]
-  ]
+  ask employees [
+    if count visitors in-cone vision-distance vision-angle = 0 [move]] ;; employees will leave via nearest exit when all visitor within visibility have left
 
 end
+
 
 ; make the turtle traverse (move through) the path all the way to the destination patch
 to move-along-path
@@ -302,13 +258,13 @@ to-report distance-nearest-obstacle [obstacleshere]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-223
-10
-1508
-1361
+224
+3
+1519
+1365
 -1
 -1
-5.01
+5.05
 1
 10
 1
@@ -400,7 +356,7 @@ vision-distance
 vision-distance
 0
 10
-5.0
+1.0
 1
 1
 NIL
@@ -415,7 +371,7 @@ vision-angle
 vision-angle
 0
 360
-160.0
+158.0
 1
 1
 NIL
@@ -447,7 +403,7 @@ bump-distance
 bump-distance
 0
 3
-0.0
+1.0
 1
 1
 NIL
@@ -462,7 +418,7 @@ num-visitors
 num-visitors
 0
 400
-18.0
+20.0
 1
 1
 NIL
@@ -477,11 +433,22 @@ num-staff
 num-staff
 0
 100
-17.0
+13.0
 1
 1
 NIL
 HORIZONTAL
+
+SWITCH
+46
+498
+196
+531
+evacuating?
+evacuating?
+0
+1
+-1000
 
 SLIDER
 17
@@ -492,7 +459,7 @@ perc-familiar
 perc-familiar
 0
 100
-63.0
+0.0
 1
 1
 NIL
