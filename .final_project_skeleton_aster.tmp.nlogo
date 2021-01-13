@@ -26,8 +26,11 @@ globals [
   astar_closed                 ;; the closed list of patches --> see astaralgorithm.nls
   optimal-path                 ;; the optimal path, list of patches from source to destination --> see astaralgorithm.nls
   alarm?
+  alarm-time
   signs
   danger-spots
+  total-evacuation-time
+  average-response-time
 ]
 
 breed [visitors visitor]       ;; agents that are visitors
@@ -45,6 +48,7 @@ turtles-own [
   gender                       ;; gender of the visitor / employee
   enter-exit                   ;; exit through which the visitor entered.
   fear-level
+  response-time
 ]
 
 
@@ -67,7 +71,10 @@ to setup
   set N-evacuated 0             ;; the global variable N-evacuated is 0 at the start of the simulation
   set end_of_simulation 300     ;; maximum amount of ticks for one simulation run
   set signs n-of 8 patches with [(pcolor = black) and (count neighbors with [pcolor = 9.9] > 1)] ;; setup 8 signs on obstacles (black patches) next to white patches (walking space)
+  ask signs [set pc
   set danger-spots n-of 5 patches with [(pcolor = 9.9) and (count patches in-radius 3 with [pcolor = 14.8] = 0)] ;; setup 5 danger-spots in the walking space, but not in radius of 3 of exits.
+  ask danger-spots [set pcolor yellow]
+  set alarm-time 30
   setup-visitors                ;; ask turtles to perform the setup-visitors procedure
   setup-employees               ;; ask turtles to perform the setup-employees procedure
   reset-ticks                   ;; resets the tick counter to zero, goes at the end of setup procedure
@@ -75,8 +82,9 @@ end
 
 to go                           ;; observer procedure
   if ticks = end_of_simulation [stop] ;; make a stop condition
-  if ticks > 30 [set alarm? true evacuate] ;; turn on the alarm
+  if ticks > alarm-time [set alarm? true evacuate] ;; turn on the alarm
   ask visitors [move]           ;; asking the visitors to do the move procedure
+  set-metrics
   tick                          ;; next time step
 
 end
@@ -202,6 +210,7 @@ to evacuate
       set evacuating? true ;; decides to leave the building
       set familiar-with-exits? true ;; is being told where nearest exit is
       choose-exit ;; sets destination at nearest exit
+      set-response-time
       ]
     ]
     if count visitors-visible = 0 [move] ;; employees will leave via nearest exit when all visitor within visibility have left
@@ -209,22 +218,27 @@ to evacuate
 
   ask visitors [
     set fear-level sum [fear-level] of visitors in-radius 5 / count(visitors in-radius 5) ;; set the fear level to the average level of fear of visitors in neighborhood
-    if fear-level > 0.7
-    [set evacuating true
+    if fear-level > 0.6
+    [set evacuating? true
+      choose-exit
+    set-response-time]
 
     let visitors-visible visitors in-cone vision-distance vision-angle
     if min-one-of (danger-spots in-cone vision-distance vision-angle) [distance myself] = 1 ;;if a visitor can see the closest danger spot in its visible area
     [ set evacuating? true ;; it decides to leave the building
       choose-exit  ;; sets destination to exit
       set fear-level 1 ;; its level of fear increases to 1
+      set-response-time
     ]
 
     if evacuating? = true [ ;; and tells other visitors in its visible area to do the same
       ask visitors-visible [
         set evacuating? true
         choose-exit
+        set-response-time
       ]
     ]
+
     if evacuating? = true and min-one-of (signs in-cone vision-distance vision-angle) [distance myself] = 1 and random 3 = 1 ;; if visitor can see the closest signs in its visible area, it has a probability 1/3 to actually see it
     [set familiar-with-exits? true ;; the visitor becomes familiar with the nearest exit displayed on the sign
      choose-exit ;; visitors sets destination at nearest exit
@@ -262,13 +276,7 @@ end
 to avoid-obstacles              ;;turtle procedure check if there is an obstacle free direct patch towards the exit, if so move towards it
   face current-destination      ;; agent faces the exit or current destination it wants to go to
   let visible-patches patches in-cone vision-distance vision-angle
-  let obstacles-here nobody
-  ask visible-patches [
-    ;check if we have a obstancle
-    ; if yes, how far is it,
-    ; if it is too close, then turn
-    set obstacles-here visible-patches with [pcolor = black]
-  ]
+  let obstacles-here visible-patches with [pcolor = black]
 
   if any? obstacles-here                  ;; if there is a black patch then execute a random turn, and move one patch
   [
@@ -297,6 +305,20 @@ to-report distance-nearest-obstacle [obstacleshere]
 
   ;print nearest-distance
   report nearest-distance
+end
+
+to set-response-time
+  set response-time ticks - alarm-time
+
+end
+
+to set-metrics
+ set N-evacuated count turtles-on patches with [pcolor =  14.8]
+ set total-evacuation-time ticks
+  if N-evacuated = count turtles [stop]
+  let evacuating-visitors visitors with [evacuating? = true]
+  set average-response-time (sum [response-time] of evacuating-visitors) / num-visitors
+
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -367,7 +389,7 @@ SWITCH
 155
 verbose?
 verbose?
-0
+1
 1
 -1000
 
@@ -398,7 +420,7 @@ vision-distance
 vision-distance
 0
 10
-2.0
+8.0
 1
 1
 NIL
@@ -413,7 +435,7 @@ vision-angle
 vision-angle
 0
 360
-160.0
+261.0
 1
 1
 NIL
@@ -445,7 +467,7 @@ bump-distance
 bump-distance
 0
 3
-0.0
+1.0
 1
 1
 NIL
@@ -460,7 +482,7 @@ num-visitors
 num-visitors
 0
 400
-18.0
+28.0
 1
 1
 NIL
@@ -475,26 +497,59 @@ num-staff
 num-staff
 0
 100
-17.0
+3.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-17
-546
-189
-579
+21
+472
+193
+505
 perc-familiar
 perc-familiar
 0
 100
-53.0
+69.0
 1
 1
 NIL
 HORIZONTAL
+
+MONITOR
+22
+520
+154
+565
+total-evacuation-time
+total-evacuation-time
+17
+1
+11
+
+MONITOR
+22
+573
+135
+618
+Evacuated agents
+N-evacuated
+17
+1
+11
+
+MONITOR
+25
+635
+172
+680
+Average Response Time
+average-response-time
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
