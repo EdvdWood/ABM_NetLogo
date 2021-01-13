@@ -152,7 +152,7 @@ to choose-exit
   (ifelse
     familiar-with-exits? = true [
       set destination nearest-exit]
-    enter-exit = 1 [
+     enter-exit = 1 [
      set destination one-of exit-north1]
     enter-exit = 2 [
       set destination one-of exit-north2]
