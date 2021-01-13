@@ -25,12 +25,12 @@ globals [
   astar_open                   ;; the open list of patches --> see astaralgorithm.nls
   astar_closed                 ;; the closed list of patches --> see astaralgorithm.nls
   optimal-path                 ;; the optimal path, list of patches from source to destination --> see astaralgorithm.nls
-  alarm?
   alarm-time
   signs
   danger-spots
   total-evacuation-time
   average-response-time
+  event-duration
 ]
 
 breed [visitors visitor]       ;; agents that are visitors
@@ -46,6 +46,7 @@ turtles-own [
   path                         ;; the optimal path from source to destination --> see astaralgorithm.nls
   current-path                 ;; part of the path that is left to be traversed --> see astaralgorithm.nls
   gender                       ;; gender of the visitor / employee
+  age
   enter-exit                   ;; exit through which the visitor entered.
   fear-level
   response-time
@@ -71,11 +72,11 @@ to setup
 
   set N-evacuated 0             ;; the global variable N-evacuated is 0 at the start of the simulation
   set end_of_simulation 300     ;; maximum amount of ticks for one simulation run
-  set signs n-of 8 patches with [(pcolor = black) and (count neighbors with [pcolor = 9.9] > 1)] ;; setup 8 signs on obstacles (black patches) next to white patches (walking space)
-  ask signs [set pcolor 17 set plabel pxcor]
-  set danger-spots n-of 30 patches with [(pcolor = 9.9) and (count patches in-radius 3 with [pcolor = 14.8] = 0)] ;; setup 5 danger-spots in the walking space, but not in radius of 3 of exits.
+  set signs patches at-points [[93 90] [98 44] [54 148] [153 106] [78 154] [73 27] [174 28] [133 68] [182 96] [35 110]] ;; place exit signs in the building
+  ask signs [set pcolor 17]
+  set danger-spots n-of n-danger-spots patches with [(pcolor = 9.9) and (count patches in-radius 10 with [pcolor = 14.8] = 0)] ;; setup danger-spots in the walking space, but not in radius of 3 of exits.
   ask danger-spots [set pcolor yellow]
-
+  set alarm? false
   set alarm-time 30
   setup-visitors                ;; ask turtles to perform the setup-visitors procedure
   setup-employees               ;; ask turtles to perform the setup-employees procedure
@@ -84,7 +85,7 @@ end
 
 to go                           ;; observer procedure
   if ticks = end_of_simulation [stop] ;; make a stop condition
-  if ticks > alarm-time [set alarm? true evacuate] ;; turn on the alarm
+  if alarm? = true or ticks > alarm-time [set alarm? true evacuate] ;; turn on the alarm
   ask visitors [move]           ;; asking the visitors to do the move procedure
   set-metrics
   tick                          ;; next time step
@@ -116,6 +117,8 @@ to setup-visitors               ;; turtle procedure
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color blue              ;; set the color of the agent
+    if-else random 100 < perc-adults [set age ["adult"]] [set age ["child"]]
+    if-else random 100 < perc-female [set gender ["female"]][ set gender ["male"]]
     set evacuating? false       ;; agent is not evacuating at the start of the simulation
     set familiar-with-exits? (random 100 < perc-familiar)  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
     choose-exit                 ;; call the procedure choose-exit to choose an exit that the agent will move to when evacuating - Note_Joel: would remove this procedure here
@@ -129,7 +132,7 @@ to setup-employees              ;;turtle procedure
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color green             ;; set the color of the agents
-    set gender one-of ["male" "female"]
+    if-else random 100 < perc-female [set gender ["female"]][ set gender ["male"]]
     set current-destination patch-here
     if-else gender = "male" [set current-speed 1 set running-speed 1.5] [set current-speed 0.9 set running-speed 1.4]
     set familiar-with-exits? true  ;; employees are familiar with the building, thus familiar-with exits? 1
@@ -231,10 +234,11 @@ to evacuate
       choose-exit  ;; sets destination to exit
       set fear-level 1 ;; its level of fear increases to 1
       set-response-time
-      set label evacuating? set label-color blue
+
     ]
 
     if evacuating? = true [ ;; and tells other visitors in its visible area to do the same
+      set label "evacuating" set label-color blue
       ask visitors-visible [
         set evacuating? true
         choose-exit
@@ -317,10 +321,13 @@ end
 
 to set-metrics
  set N-evacuated count turtles-on patches with [pcolor =  14.8]
- set total-evacuation-time ticks
-  if N-evacuated = count turtles [stop]
-  let evacuating-visitors visitors with [evacuating? = true]
-  set average-response-time (sum [response-time] of evacuating-visitors) / num-visitors
+  if N-evacuated = count turtles [
+    stop
+    set total-evacuation-time (word (floor (ticks / 60)) " min " (ticks - (floor(ticks / 60)) * 60) " sec") ]
+  ; with [evacuating? = true]
+  ;let average-response-ticks (sum [response-time] of evacuating-visitors) / num-visitors
+  ;set average-response-time (word (floor (average-response-ticks / 60)) " min " (round (average-response-ticks) - (floor( average-response-ticks / 60)) * 60) " sec")
+  set event-duration (word (floor (ticks / 60)) " min " (ticks - (floor(ticks / 60)) * 60) " sec")
 
 end
 @#$#@#$#@
@@ -386,10 +393,10 @@ NIL
 1
 
 SWITCH
-12
-122
-133
-155
+11
+105
+132
+138
 verbose?
 verbose?
 0
@@ -398,9 +405,9 @@ verbose?
 
 SWITCH
 12
-161
+159
 122
-194
+192
 debug?
 debug?
 0
@@ -423,7 +430,7 @@ vision-distance
 vision-distance
 0
 10
-9.0
+3.0
 1
 1
 NIL
@@ -445,10 +452,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-115
-66
-178
-99
+114
+54
+177
+87
 NIL
 go
 NIL
@@ -515,17 +522,17 @@ perc-familiar
 perc-familiar
 0
 100
-74.0
+67.0
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-22
-520
-154
-565
+31
+767
+163
+812
 total-evacuation-time
 total-evacuation-time
 17
@@ -533,10 +540,10 @@ total-evacuation-time
 11
 
 MONITOR
-22
-573
-135
-618
+30
+655
+143
+700
 Evacuated agents
 N-evacuated
 17
@@ -544,12 +551,79 @@ N-evacuated
 11
 
 MONITOR
-25
-635
-172
-680
+30
+711
+177
+756
 Average Response Time
 average-response-time
+17
+1
+11
+
+SLIDER
+29
+606
+201
+639
+n-danger-spots
+n-danger-spots
+0
+100
+34.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+23
+511
+195
+544
+perc-female
+perc-female
+0
+100
+63.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+27
+563
+199
+596
+perc-adults
+perc-adults
+0
+100
+61.0
+1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+137
+105
+240
+138
+alarm?
+alarm?
+1
+1
+-1000
+
+MONITOR
+47
+832
+143
+877
+Event Duration
+event-duration
 17
 1
 11
