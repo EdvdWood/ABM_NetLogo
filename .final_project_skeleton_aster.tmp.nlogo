@@ -73,7 +73,7 @@ to setup
   set end_of_simulation 300     ;; maximum amount of ticks for one simulation run
   set signs n-of 8 patches with [(pcolor = black) and (count neighbors with [pcolor = 9.9] > 1)] ;; setup 8 signs on obstacles (black patches) next to white patches (walking space)
   ask signs [set pcolor 17 set plabel pxcor]
-  set danger-spots n-of 15 patches with [(pcolor = 9.9) and (count patches in-radius 3 with [pcolor = 14.8] = 0)] ;; setup 5 danger-spots in the walking space, but not in radius of 3 of exits.
+  set danger-spots n-of 30 patches with [(pcolor = 9.9) and (count patches in-radius 3 with [pcolor = 14.8] = 0)] ;; setup 5 danger-spots in the walking space, but not in radius of 3 of exits.
   ask danger-spots [set pcolor yellow]
 
   set alarm-time 30
@@ -118,10 +118,8 @@ to setup-visitors               ;; turtle procedure
     set color blue              ;; set the color of the agent
     set evacuating? false       ;; agent is not evacuating at the start of the simulation
     set familiar-with-exits? (random 100 < perc-familiar)  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
-    ;choose-exit                 ;; call the procedure choose-exit to choose an exit that the agent will move to when evacuating - Note_Joel: would remove this procedure here
+    choose-exit                 ;; call the procedure choose-exit to choose an exit that the agent will move to when evacuating - Note_Joel: would remove this procedure here
     set current-destination one-of patches with [pcolor = 9.9]  ;; when the agent is walking randomly at the beginning (before evacuating) the agent needs this as a destination
-    set fear-level 0
-    set label fear-level set label-color red
   ]
 end
 
@@ -152,7 +150,7 @@ to choose-exit
   (ifelse
     familiar-with-exits? = true [
       set destination nearest-exit]
-     enter-exit = 1 [
+    enter-exit = 1 [
      set destination one-of exit-north1]
     enter-exit = 2 [
       set destination one-of exit-north2]
@@ -220,18 +218,20 @@ to evacuate
   ]
 
   ask visitors [
-    set fear-level sum [fear-level] of visitors in-radius 5 / count(visitors in-radius 5) ;; set the fear level to the average level of fear of visitors in neighborhood
+    set fear-level sum [fear-level] of visitors in-radius 10 / count(visitors in-radius 10) ;; set the fear level to the average level of fear of visitors in neighborhood
     if fear-level > 0.6
     [set evacuating? true
       choose-exit
     set-response-time]
+    if fear-level > 0.1 [set color red]
 
     let visitors-visible visitors in-cone vision-distance vision-angle
-    if min-one-of (danger-spots in-cone vision-distance vision-angle) [distance myself] = 1 ;;if a visitor can see the closest danger spot in its visible area
+    if count danger-spots in-cone vision-distance vision-angle > 0 ;;if a visitor can see the closest danger spot in its visible area
     [ set evacuating? true ;; it decides to leave the building
       choose-exit  ;; sets destination to exit
       set fear-level 1 ;; its level of fear increases to 1
       set-response-time
+      set label evacuating? set label-color blue
     ]
 
     if evacuating? = true [ ;; and tells other visitors in its visible area to do the same
@@ -392,7 +392,7 @@ SWITCH
 155
 verbose?
 verbose?
-1
+0
 1
 -1000
 
@@ -423,7 +423,7 @@ vision-distance
 vision-distance
 0
 10
-7.0
+9.0
 1
 1
 NIL
@@ -485,7 +485,7 @@ num-visitors
 num-visitors
 0
 400
-28.0
+48.0
 1
 1
 NIL
@@ -500,7 +500,7 @@ num-staff
 num-staff
 0
 100
-9.0
+7.0
 1
 1
 NIL
@@ -515,7 +515,7 @@ perc-familiar
 perc-familiar
 0
 100
-69.0
+74.0
 1
 1
 NIL
