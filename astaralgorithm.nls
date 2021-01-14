@@ -49,7 +49,7 @@ to-report find-a-path [ source-patch destination-patch]
         ]
         [
           ; the neighbors should not be obstacles or already explored patches (part of the closed list) AND it does not have 12 or more people in the patch, since there can be no more than 8 people in as quare metre = 12 agents in one patch of around 1.5 m2
-          ask neighbors with [ pcolor != black and (not member? self astar_closed) and (self != parent-patch) and count turtles-here < 12]
+          ask neighbors4 with [ pcolor != 0 and (not member? self astar_closed) and (self != parent-patch) and count turtles-here < 12]
           [
             ; the neighbors to be explored should also not be the source or
             ; destination patches or already a part of the open list (unexplored patches list)
