@@ -64,7 +64,7 @@ to setup
   clear-all                     ;; start with clearing all
  ;random-seed 42                ;; choose to setup from a random seed or not, can be handy for debugging
   setupMap                      ;; setup the floor plan = part of the environment --> see utilities file, make sure to do this first, because for example the colours might be not perfectly white and black, so they are set to perfectly white and black for the code below to work
-  set obstacles patches with [pcolor = black]                                           ;; make all black patches obstacles (obstacles are walls, furniture, etc..) which are used in the avoid-obstacles procedure
+  set obstacles patches with [pcolor = 0]                                           ;; make all black patches obstacles (obstacles are walls, furniture, etc..) which are used in the avoid-obstacles procedure
   set exit-north1 patches with [(pcolor = 14.8) and (pxcor > 109) and (pxcor < 118 )]   ;; setup exit-north1: when the patches are red and within these coordinates, then it is this exit.
   set exit-north2 patches with [(pcolor = 14.8) and (pxcor > 118) and (pxcor < 130)]    ;; setup exit-north2: when the patches are red and within these scoordinates, then it is this exit.
   set exit-west patches with [(pcolor = 14.8) and (pxcor > 15) and (pxcor < 30)]       ;; setup exit-west: when the patches are red and within these scoordinates, then it is this exit.
@@ -108,7 +108,7 @@ to setupMap
 end
 
 to setup-visitors               ;; turtle procedure
-  create-visitors num-visitors [move-to one-of patches with [pcolor = white]] ;;place visitors on white patches
+  create-visitors num-visitors [move-to one-of patches with [pcolor = 9.9]] ;;place visitors on white patches
   ask visitors [
     set heading  (heading + 45 - (random 90)) ;;set a random heading at the start so the agents walk randomly until they start to evacuate
     set current-speed 0.5       ;; set the current speed of the agent
@@ -283,7 +283,7 @@ end
 to avoid-obstacles              ;;turtle procedure check if there is an obstacle free direct patch towards the exit, if so move towards it
   face current-destination      ;; agent faces the exit or current destination it wants to go to
   let visible-patches patches in-cone vision-distance vision-angle
-  let obstacles-here visible-patches with [pcolor = black]
+  let obstacles-here visible-patches with [pcolor = 0]
 
   if any? obstacles-here                  ;; if there is a black patch then execute a random turn, and move one patch
   [
@@ -398,7 +398,7 @@ SWITCH
 138
 verbose?
 verbose?
-0
+1
 1
 -1000
 
@@ -409,7 +409,7 @@ SWITCH
 192
 debug?
 debug?
-0
+1
 1
 -1000
 
@@ -429,7 +429,7 @@ vision-distance
 vision-distance
 0
 10
-3.0
+8.0
 1
 1
 NIL
@@ -444,7 +444,7 @@ vision-angle
 vision-angle
 0
 360
-261.0
+130.0
 1
 1
 NIL
@@ -491,7 +491,7 @@ num-visitors
 num-visitors
 0
 400
-48.0
+25.0
 1
 1
 NIL
@@ -521,7 +521,7 @@ perc-familiar
 perc-familiar
 0
 100
-67.0
+71.0
 1
 1
 NIL
@@ -584,7 +584,7 @@ perc-female
 perc-female
 0
 100
-63.0
+62.0
 1
 1
 NIL
