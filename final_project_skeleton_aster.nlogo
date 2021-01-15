@@ -35,6 +35,7 @@ globals [
 
 breed [visitors visitor]       ;; agents that are visitors
 breed [employees employee]     ;; agents that are employees
+breed [dangerspots dangerspot]
 
 turtles-own [
   current-speed                ;; the current walking speed of the agent
@@ -74,12 +75,13 @@ to setup
   set end_of_simulation 300     ;; maximum amount of ticks for one simulation run
   set signs patches at-points [[93 90] [98 44] [54 148] [153 106] [78 154] [73 27] [174 28] [133 68] [182 96] [35 110]] ;; place exit signs in the building
   ask signs [set pcolor 17]
-  set danger-spots n-of n-danger-spots patches with [(pcolor = 9.9) and (count patches in-radius 10 with [pcolor = 14.8] = 0)] ;; setup danger-spots in the walking space, but not in radius of 3 of exits.
-  ask danger-spots [set pcolor yellow]
+  ;set danger-spots n-of n-danger-spots patches with [(pcolor = 9.9) and (count patches in-radius 10 with [pcolor = 14.8] = 0)] ;; setup danger-spots in the walking space, but not in radius of 3 of exits.
+  ;ask danger-spots [set pcolor yellow]
   set alarm? false
   set alarm-time 30
   setup-visitors                ;; ask turtles to perform the setup-visitors procedure
   setup-employees               ;; ask turtles to perform the setup-employees procedure
+  setup-dangerspots
   reset-ticks                   ;; resets the tick counter to zero, goes at the end of setup procedure
 end
 
@@ -140,6 +142,16 @@ to setup-employees              ;;turtle procedure
   ]
 
 end
+
+to setup-dangerspots
+  create-dangerspots 1 [move-to one-of patches with [(pcolor = 0) and (count patches in-radius 3 with [pcolor = 9.9] > 0)]]
+  ask dangerspots [
+  set color yellow
+  set shape "plant"
+  set size 4
+  ]
+end
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -612,7 +624,7 @@ SWITCH
 138
 alarm?
 alarm?
-0
+1
 1
 -1000
 
