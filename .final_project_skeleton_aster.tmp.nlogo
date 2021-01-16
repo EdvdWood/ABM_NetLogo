@@ -211,7 +211,7 @@ end
 
 <<<<<<< Updated upstream
 to setup-dangerspots
-  create-dangerspots 1 [move-to one-of patches with [(pcolor = 0) and (count patches in-radius 3 with [pcolor = 9.9] > 0) ]]
+  create-dangerspots 1 [move-to one-of patches with [(pcolor = 0) and (count patches in-radius 3 with [pcolor = 9.9] > 0) and (count patches in-radius 10 with [pcolor = 14.8] = 0)]]
   ask dangerspots [
   set color yellow
   set shape "plant"
@@ -330,7 +330,11 @@ to evacuate
   [
     let visitors-visible visitors in-cone vision-distance vision-angle
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     if count visitors-visible > 0 ;; if an employee sees a visitor
+=======
+    if any? visitors-visible ;; if an employee sees a visitor
+>>>>>>> Stashed changes
 =======
     if any? visitors-visible ;; if an employee sees a visitor
 >>>>>>> Stashed changes
@@ -343,7 +347,11 @@ to evacuate
       set-response-time
       ]
     ]
-    if count visitors-visible = 0 [move] ;; employees will leave via nearest exit when all visitor within visibility have left
+    if count visitors-visible = 0 [
+      set evacuating? true
+      choose-exit
+      set label "evacuating" set label c
+      move] ;; employees will leave via nearest exit when all visitor within visibility have left
   ]
 
   ask visitors [
@@ -446,9 +454,13 @@ to avoid-obstacles              ;;turtle procedure check if there is an obstacle
   let obstacles-here visible-patches with [pcolor = 0]
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   if any? obstacles-here                  ;; if there is a black patch then execute a random turn, and move one patch
 =======
   if any? obstacles-here or any? dangerspots in-cone vision-distance vision-angle                ;; if there is a black patch or a fire in vision-distance then execute a random turn, and move one patch
+>>>>>>> Stashed changes
+=======
+  if any? obstacles-here or any? dangerspots in-cone vision-distance vision-angle                ;; if there is a black patch then execute a random turn, and move one patch
 >>>>>>> Stashed changes
   [
     if distance-nearest-obstacle obstacles-here < 2 * current-speed ; the distance we would cover in 1 step
@@ -577,7 +589,11 @@ SWITCH
 verbose?
 verbose?
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 1
+=======
+0
+>>>>>>> Stashed changes
 =======
 0
 >>>>>>> Stashed changes
@@ -682,7 +698,11 @@ num-visitors
 0
 400
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 25.0
+=======
+3.0
+>>>>>>> Stashed changes
 =======
 3.0
 >>>>>>> Stashed changes
@@ -701,7 +721,11 @@ num-staff
 0
 100
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 7.0
+=======
+3.0
+>>>>>>> Stashed changes
 =======
 3.0
 >>>>>>> Stashed changes
