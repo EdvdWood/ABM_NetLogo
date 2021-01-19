@@ -35,10 +35,12 @@ globals [
 
 breed [visitors visitor]       ;; agents that are visitors
 breed [employees employee]     ;; agents that are employees
+breed [dangerspots dangerspot] ;; agents that are dangerspots
 
 turtles-own [
-  current-speed                ;; the current walking speed of the agent
-  running-speed
+  current-speed                ;; the current speed of the agent, which can be running or walking
+  running-speed                ;; walking-speed of the agent
+  walking-speed                ;; running speed of the agent
   destination                  ;; the exit the agent will choose to evacaute through [exit-north1, exit-north2, exit-south, exit-east]
   familiar-with-exits?         ;; is the agent familiar with where the exits are?
   evacuating?                 ;; is the agent evacuating or not?
@@ -46,11 +48,11 @@ turtles-own [
   path                         ;; the optimal path from source to destination --> see astaralgorithm.nls
   current-path                 ;; part of the path that is left to be traversed --> see astaralgorithm.nls
   gender                       ;; gender of the visitor / employee
-  age
+  age                          ;; age of the visitor/ employee
   enter-exit                   ;; exit through which the visitor entered.
   jumpiness                    ;; How affected by fear increases the person is.
-  fear-level
-  response-time
+  fear-level                   ;; fear level
+  response-time                ;; time it takes for a agent to respond to the alarm and start evacuating
 ]
 
 
@@ -65,31 +67,33 @@ to setup
   clear-all                     ;; start with clearing all
  ;random-seed 42                ;; choose to setup from a random seed or not, can be handy for debugging
   setupMap                      ;; setup the floor plan = part of the environment --> see utilities file, make sure to do this first, because for example the colours might be not perfectly white and black, so they are set to perfectly white and black for the code below to work
-  set obstacles patches with [pcolor = black]                                           ;; make all black patches obstacles (obstacles are walls, furniture, etc..) which are used in the avoid-obstacles procedure
+  set obstacles patches with [pcolor = 0]                                           ;; make all black patches obstacles (obstacles are walls, furniture, etc..) which are used in the avoid-obstacles procedure
   set exit-north1 patches with [(pcolor = 14.8) and (pxcor > 109) and (pxcor < 118 )]   ;; setup exit-north1: when the patches are red and within these coordinates, then it is this exit.
   set exit-north2 patches with [(pcolor = 14.8) and (pxcor > 118) and (pxcor < 130)]    ;; setup exit-north2: when the patches are red and within these scoordinates, then it is this exit.
   set exit-west patches with [(pcolor = 14.8) and (pxcor > 15) and (pxcor < 30)]       ;; setup exit-west: when the patches are red and within these scoordinates, then it is this exit.
   set exit-east patches with [(pcolor = 14.8) and (pxcor > 145) and (pxcor < 160)]      ;; setup exit-east: when the patches are red and within these scoordinates, then it is this exit
-
   set N-evacuated 0             ;; the global variable N-evacuated is 0 at the start of the simulation
   set end_of_simulation 300     ;; maximum amount of ticks for one simulation run
   set signs patches at-points [[93 90] [98 44] [54 148] [153 106] [78 154] [73 27] [174 28] [133 68] [182 96] [35 110]] ;; place exit signs in the building
-  ask signs [set pcolor 17]
-  set danger-spots n-of n-danger-spots patches with [(pcolor = 9.9) and (count patches in-radius 10 with [pcolor = 14.8] = 0)] ;; setup danger-spots in the walking space, but not in radius of 3 of exits.
-  ask danger-spots [set pcolor yellow]
-  set alarm? false
-  set alarm-time 30
+  ask signs [
+    set pcolor 56 ]              ;; make exit signs green
+  set alarm? false              ;; the alarm is turned off at the start
+  set alarm-time 30             ;; the alarm goes off after 30 seconds
   setup-visitors                ;; ask turtles to perform the setup-visitors procedure
   setup-employees               ;; ask turtles to perform the setup-employees procedure
+  setup-dangerspots             ;; determine the place where the danger (fire) is starting
   reset-ticks                   ;; resets the tick counter to zero, goes at the end of setup procedure
 end
 
 to go                           ;; observer procedure
   if ticks = end_of_simulation [stop] ;; make a stop condition
-  if alarm? = true or ticks > alarm-time [set alarm? true evacuate] ;; turn on the alarm
+  if alarm? = true or ticks > alarm-time [ ;; if alarm button is pressed or after 30 seconds
+    set alarm? true            ;; turn on the alarm
+    evacuate                   ;; start the evacuating procedure
+    spread-danger]             ;; the danger (fire) is spreading slowly
   ask visitors [move]           ;; asking the visitors to do the move procedure
   ask employees [move]
-  set-metrics
+  set-metrics                 ;; determine the metrics
   tick                          ;; next time step
 
 end
@@ -110,7 +114,7 @@ to setupMap
 end
 
 to setup-visitors               ;; turtle procedure
-  create-visitors num-visitors [move-to one-of patches with [pcolor = white]] ;;place visitors on white patches
+  create-visitors num-visitors [move-to one-of patches with [pcolor = 9.9]] ;;place visitors on white patches
   ask visitors [
     set heading  (heading + 45 - (random 90)) ;;set a random heading at the start so the agents walk randomly until they start to evacuate
     set current-speed 0.5       ;; set the current speed of the agent
@@ -120,8 +124,18 @@ to setup-visitors               ;; turtle procedure
     set size 1                  ;; set the size of the agent
     set color blue              ;; set the color of the agent
     set jumpiness random-float 0.7
-    if-else random 100 < perc-adults [set age ["adult"]] [set age ["child"]]
-    if-else random 100 < perc-female [set gender ["female"]][ set gender ["male"]]
+    if-else random 100 < perc-adults
+    [set age ["adult"]]
+    [set age ["child"]]
+    if-else random 100 < perc-female [
+      set gender ["female"]][
+      set gender ["male"]]
+    if-else gender = "male" [
+      set walking-speed 1
+      set running-speed 1.5] [
+      set walking-speed 0.9
+      set running-speed 1.4]
+    set current-speed walking-speed
     set evacuating? false       ;; agent is not evacuating at the start of the simulation
     set familiar-with-exits? (random 100 < perc-familiar)  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
     choose-exit                 ;; call the procedure choose-exit to choose an exit that the agent will move to when evacuating - Note_Joel: would remove this procedure here
@@ -135,13 +149,38 @@ to setup-employees              ;;turtle procedure
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color green             ;; set the color of the agents
-    if-else random 100 < perc-female [set gender ["female"]][ set gender ["male"]]
-    set current-destination patch-here
-    if-else gender = "male" [set current-speed 1 set running-speed 1.5] [set current-speed 0.9 set running-speed 1.4]
+    if-else random 100 < perc-female [
+      set gender ["female"]][  ;; set for perc-female % of employees female
+      set gender ["male"]]     ;; set the 100 - perc-female % of employees male
+    set current-destination patch-here ;; employees do not move at the start
+    if-else gender = "male" [ ;; if agent is male
+      set walking-speed 1
+      set running-speed 1.5] [
+      set walking-speed 0.9   ;; else for females
+      set running-speed 1.4]
+    set current-speed walking-speed ;; agents are walking at the start
     set familiar-with-exits? true  ;; employees are familiar with the building, thus familiar-with exits? 1
     choose-exit                 ;; call the procedure choose-exit to chose an exit that the agent will move to when evacuating
   ]
 
+end
+
+to setup-dangerspots ;; set one of the obstacles on fire that are close to the walking space, but not near the exits
+  create-dangerspots 1 [move-to one-of patches with [(pcolor = 0) and any? patches in-radius 3 with [pcolor = 9.9] and (count patches in-radius vision-distance with [pcolor = 14.8] = 0)]]
+  ask dangerspots [
+  set color yellow
+  set shape "plant" ;; plant looks like fire symbol ;)
+  set size 4
+  ]
+end
+
+to spread-danger ;; the fire spreads to other obstacles nearby
+  create-dangerspots 1 [move-to one-of patches with [(pcolor = 0) and any? patches in-radius 3 with [pcolor = 9.9] and any? dangerspots in-radius 5 and (count patches in-radius vision-distance with [pcolor = 14.8] = 0)]]
+  ask dangerspots [
+    set color yellow
+    set size 5
+    set shape "plant"
+  ]
 end
 
 
@@ -151,7 +190,7 @@ end
 
 to choose-exit
 
-  let nearest-exit min-one-of (patches with [pcolor = 14.8]) [distance myself]
+  let nearest-exit min-one-of (patches with [pcolor = 14.8]) [distance myself] ;; determine nearest exit
   if evacuating? = true [
   (ifelse
     familiar-with-exits? = true [
@@ -167,17 +206,12 @@ to choose-exit
     [set destination one-of exit-north1]
   )
   ]
-  ;; If agent is familiar, choose nearest exit, otherwise choose the exit through which the agent entered.
-  ;[set destination one-of exit-north1]     ;; setting the exit choice to exit-north1, this is now done for all agents, but needs to be done based on familiarity
- ;ifelse familiar-with-exits? 1           ;; ifelse loop
- ;[ set chosen-exit .... ]                ;; if the agent is familiar with the environment, choose the nearest exit as destination
- ;[ set chosen-exit .... ]                ;; else, choose main entrance as exit
 end
 
 
 to move                                   ;;turtle procedure
   crowd-control
-  if-else  evacuating? = true                   ;; ifelse
+  if-else  evacuating? = true             ;; ifelse
   [ set current-destination destination   ;; if agent is evacauting, change heading to "destination", which is the chosen exit
     set path find-a-path patch-here destination
   set optimal-path path
@@ -199,11 +233,9 @@ end
 
 
 to crowd-control ;; make sure walking speed is reduced when in space is crowded and no more than 8 building users per square meter
-  if (count [turtles-here] of patch-here) > 7 [rt 45] ;; if there 8 building users on a patch, buildings users change direction 45 degrees.
-  ;; Note to self: all building users move simultaniously and 1 patch is 1m2, so not entirely reaslistic. Also, this restriction should not hold for the exits where buildingusers accumulate.
-  set current-speed current-speed * (1 / (count [turtles-here] of patch-here) ^ 2) ;; slows down buildings users non-linearly
-  set running-speed running-speed * (1 / (count [turtles-here] of patch-here) ^ 2)
-  ;; Note to self: could maybe be enhanced somehow in combination with using "patches in-radius"
+  if count turtles-here > 7 and [pcolor] of patch-here != 14.8 [ask one-of turtles-here [rt 45]] ;; if there 8 building users on a patch, one-of the buildings users turns 45 degrees. Except for the exits, where buildingsusers accumulate
+  set walking-speed walking-speed * (1 / (count turtles in-radius 2) ^ 2) ;; slows down buildings users non-linearly
+  set running-speed running-speed * (1 / (count turtles in-radius 2) ^ 2)
 
 end
 
@@ -211,7 +243,6 @@ to evacuate
    ask employees
   [
     let visitors-visible visitors in-cone vision-distance vision-angle
-
     ifelse count visitors-visible > 0 [
       set evacuating? false ;; if an employee sees a visitor
       ask visitors-visible [;;the visitor that is being looked at
@@ -223,7 +254,12 @@ to evacuate
        [
           set evacuating? true
           choose-exit
-        ]
+              set label "evacuating"
+      set label-color blue
+      if-else count turtles in-radius 3 < 4 [ ;; if there are no turtles nearby, employees are running. else walking
+        set current-speed running-speed][
+        set current-speed walking-speed] ;; employees will leave via nearest exit when all visitor within visibility have left
+    ]
   ]
     ;if count visitors-visible = 0 [move] ;; employees will leave via nearest exit when all visitor within visibility have left
 
@@ -235,12 +271,14 @@ to evacuate
       set fear-level fear-level + 0.01 * jumpiness]
     if fear-level > 0.6
     [set evacuating? true
+
+
       choose-exit
     set-response-time]
     if fear-level > 0.1 [set color red]
 
     let visitors-visible visitors in-cone vision-distance vision-angle
-    if count danger-spots in-cone vision-distance vision-angle > 0 ;;if a visitor can see the closest danger spot in its visible area
+    if count dangerspots in-cone vision-distance vision-angle > 0 ;;if a visitor can see the closest danger spot in its visible area
     [ set evacuating? true ;; it decides to leave the building
       choose-exit  ;; sets destination to exit
       set fear-level 1 ;; its level of fear increases to 1
@@ -248,12 +286,16 @@ to evacuate
 
     ]
 
-    if evacuating? = true [ ;; and tells other visitors in its visible area to do the same
+    if evacuating? = true [ ;; if the visitor is evacuating
       set label "evacuating" set label-color blue
-      ask visitors-visible [
+      ask visitors-visible [ ;; it tells other visitors in its visible area to do the same
         set evacuating? true
         choose-exit
         set-response-time
+        if-else count turtles in-radius 3 < 4 [
+          set current-speed running-speed][
+          set current-speed walking-speed]
+
       ]
     ]
 
@@ -294,9 +336,9 @@ end
 to avoid-obstacles              ;;turtle procedure check if there is an obstacle free direct patch towards the exit, if so move towards it
   face current-destination      ;; agent faces the exit or current destination it wants to go to
   let visible-patches patches in-cone vision-distance vision-angle
-  let obstacles-here visible-patches with [pcolor = black]
+  let obstacles-here visible-patches with [pcolor = 0]
 
-  if any? obstacles-here                  ;; if there is a black patch then execute a random turn, and move one patch
+  if any? obstacles-here or any? dangerspots in-cone vision-distance vision-angle                ;; if there is a black patch or a fire in vision-distance then execute a random turn, and move one patch
   [
     if distance-nearest-obstacle obstacles-here < 2 * current-speed ; the distance we would cover in 1 step
     [ rt random 90 + 180
@@ -325,20 +367,20 @@ to-report distance-nearest-obstacle [obstacleshere]
   report nearest-distance
 end
 
-to set-response-time
+to set-response-time ;; record the time between the number of ticks when a visitor start evacuating and the point where the alarm goes off.
   set response-time ticks - alarm-time
 
 end
 
 to set-metrics
- set N-evacuated count turtles-on patches with [pcolor =  14.8]
-  if N-evacuated = count turtles [
+ set N-evacuated count turtles-on patches with [pcolor =  14.8] ;; count turtles that reached the exits
+  if N-evacuated = count turtles [ ;; if all turtles are evacuated, stop
     stop
-    set total-evacuation-time (word (floor (ticks / 60)) " min " (ticks - (floor(ticks / 60)) * 60) " sec") ]
-  ; with [evacuating? = true]
-  ;let average-response-ticks (sum [response-time] of evacuating-visitors) / num-visitors
-  ;set average-response-time (word (floor (average-response-ticks / 60)) " min " (round (average-response-ticks) - (floor( average-response-ticks / 60)) * 60) " sec")
-  set event-duration (word (floor (ticks / 60)) " min " (ticks - (floor(ticks / 60)) * 60) " sec")
+    set total-evacuation-time (word (floor (ticks / 60)) " min " (ticks - (floor(ticks / 60)) * 60) " sec") ] ;; set total evacuation time in minutes and seconds
+  let average-response-ticks (sum [response-time] of visitors with [evacuating? = true]) / num-visitors ;; determine average number of ticks neccessary to respond to the alarm
+  set average-response-time (word (floor (average-response-ticks / 60)) " min " (round (average-response-ticks) - (floor( average-response-ticks / 60)) * 60) " sec") ;; convert ticks to minutes and seconds
+  set event-duration (word (floor (ticks / 60)) " min " (ticks - (floor(ticks / 60)) * 60) " sec") ;; show ticks in minutes and seconds
+
 
 end
 @#$#@#$#@
@@ -440,8 +482,8 @@ SLIDER
 vision-distance
 vision-distance
 0
-10
-3.0
+100
+16.0
 1
 1
 NIL
@@ -456,7 +498,7 @@ vision-angle
 vision-angle
 0
 360
-261.0
+130.0
 1
 1
 NIL
@@ -503,7 +545,7 @@ num-visitors
 num-visitors
 0
 400
-48.0
+3.0
 1
 1
 NIL
@@ -518,7 +560,7 @@ num-staff
 num-staff
 0
 100
-7.0
+3.0
 1
 1
 NIL
@@ -533,18 +575,18 @@ perc-familiar
 perc-familiar
 0
 100
-67.0
+71.0
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-31
-767
-163
-812
-total-evacuation-time
+30
+822
+162
+867
+Total evacuation time
 total-evacuation-time
 17
 1
@@ -596,7 +638,7 @@ perc-female
 perc-female
 0
 100
-63.0
+62.0
 1
 1
 NIL
@@ -611,7 +653,7 @@ perc-adults
 perc-adults
 0
 100
-61.0
+68.0
 1
 1
 NIL
@@ -624,15 +666,15 @@ SWITCH
 138
 alarm?
 alarm?
-0
+1
 1
 -1000
 
 MONITOR
-47
-832
-143
-877
+31
+766
+127
+811
 Event Duration
 event-duration
 17
