@@ -48,6 +48,7 @@ turtles-own [
   gender                       ;; gender of the visitor / employee
   age
   enter-exit                   ;; exit through which the visitor entered.
+  jumpiness                    ;; How affected by fear increases the person is.
   fear-level
   response-time
 ]
@@ -87,6 +88,7 @@ to go                           ;; observer procedure
   if ticks = end_of_simulation [stop] ;; make a stop condition
   if alarm? = true or ticks > alarm-time [set alarm? true evacuate] ;; turn on the alarm
   ask visitors [move]           ;; asking the visitors to do the move procedure
+  ask employees [move]
   set-metrics
   tick                          ;; next time step
 
@@ -117,6 +119,7 @@ to setup-visitors               ;; turtle procedure
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color blue              ;; set the color of the agent
+    set jumpiness random-float 0.7
     if-else random 100 < perc-adults [set age ["adult"]] [set age ["child"]]
     if-else random 100 < perc-female [set gender ["female"]][ set gender ["male"]]
     set evacuating? false       ;; agent is not evacuating at the start of the simulation
@@ -208,20 +211,28 @@ to evacuate
    ask employees
   [
     let visitors-visible visitors in-cone vision-distance vision-angle
-    if count visitors-visible > 0 ;; if an employee sees a visitor
-    [ask visitors-visible ;;the visitor that is being looked at
-      [
-      set evacuating? true ;; decides to leave the building
-      set familiar-with-exits? true ;; is being told where nearest exit is
-      choose-exit ;; sets destination at nearest exit
-      set-response-time
-      ]
-    ]
-    if count visitors-visible = 0 [move] ;; employees will leave via nearest exit when all visitor within visibility have left
+
+    ifelse count visitors-visible > 0 [
+      set evacuating? false ;; if an employee sees a visitor
+      ask visitors-visible [;;the visitor that is being looked at
+          set evacuating? true ;; decides to leave the building
+          set familiar-with-exits? true ;; is being told where nearest exit is
+          choose-exit ;; sets destination at nearest exit
+          set-response-time
+    ]]
+       [
+          set evacuating? true
+          choose-exit
+        ]
   ]
+    ;if count visitors-visible = 0 [move] ;; employees will leave via nearest exit when all visitor within visibility have left
+
 
   ask visitors [
     set fear-level sum [fear-level] of visitors in-radius 10 / count(visitors in-radius 10) ;; set the fear level to the average level of fear of visitors in neighborhood
+    ifelse fear-level = 0 [
+      set fear-level jumpiness] [
+      set fear-level fear-level + 0.01 * jumpiness]
     if fear-level > 0.6
     [set evacuating? true
       choose-exit
@@ -324,8 +335,9 @@ to set-metrics
   if N-evacuated = count turtles [
     stop
     set total-evacuation-time (word (floor (ticks / 60)) " min " (ticks - (floor(ticks / 60)) * 60) " sec") ]
-  let average-response-ticks (sum [response-time] of visitors with [evacuating? = true]) / num-visitors
-  set average-response-time (word (floor (average-response-ticks / 60)) " min " (round (average-response-ticks) - (floor( average-response-ticks / 60)) * 60) " sec")
+  ; with [evacuating? = true]
+  ;let average-response-ticks (sum [response-time] of evacuating-visitors) / num-visitors
+  ;set average-response-time (word (floor (average-response-ticks / 60)) " min " (round (average-response-ticks) - (floor( average-response-ticks / 60)) * 60) " sec")
   set event-duration (word (floor (ticks / 60)) " min " (ticks - (floor(ticks / 60)) * 60) " sec")
 
 end
