@@ -50,6 +50,7 @@ turtles-own [
   gender                       ;; gender of the visitor / employee
   age                          ;; age of the visitor/ employee
   enter-exit                   ;; exit through which the visitor entered.
+  jumpiness                    ;; How affected by fear increases the person is.
   fear-level                   ;; fear level
   response-time                ;; time it takes for a agent to respond to the alarm and start evacuating
 ]
@@ -91,7 +92,8 @@ to go                           ;; observer procedure
     evacuate                   ;; start the evacuating procedure
     spread-danger]             ;; the danger (fire) is spreading slowly
   ask visitors [move]           ;; asking the visitors to do the move procedure
-  set-metrics                   ;; determine the metrics
+  ask employees [move]
+  set-metrics                 ;; determine the metrics
   tick                          ;; next time step
 
 end
@@ -121,6 +123,7 @@ to setup-visitors               ;; turtle procedure
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color blue              ;; set the color of the agent
+    set jumpiness random-float 0.7
     if-else random 100 < perc-adults
     [set age ["adult"]]
     [set age ["child"]]
@@ -240,31 +243,36 @@ to evacuate
    ask employees
   [
     let visitors-visible visitors in-cone vision-distance vision-angle
-    if any? visitors-visible ;; if an employee sees a visitor
-    [ask visitors-visible ;;the visitor that is being looked at
-      [
-      set evacuating? true ;; decides to leave the building
-      set familiar-with-exits? true ;; is being told where nearest exit is
-      choose-exit ;; sets destination at nearest exit
-      set-response-time ;; follow set-response-time procedure
-      ]
-    ]
-    if count visitors-visible = 0 [ ;; if everyone is gone within visible distance
-      set evacuating? true ;; the employee start to evacuate
-      choose-exit
-      set label "evacuating"
+    ifelse count visitors-visible > 0 [
+      set evacuating? false ;; if an employee sees a visitor
+      ask visitors-visible [;;the visitor that is being looked at
+          set evacuating? true ;; decides to leave the building
+          set familiar-with-exits? true ;; is being told where nearest exit is
+          choose-exit ;; sets destination at nearest exit
+          set-response-time
+    ]]
+       [
+          set evacuating? true
+          choose-exit
+              set label "evacuating"
       set label-color blue
       if-else count turtles in-radius 3 < 4 [ ;; if there are no turtles nearby, employees are running. else walking
         set current-speed running-speed][
-        set current-speed walking-speed]
-
-      move] ;; employees will leave via nearest exit when all visitor within visibility have left
+        set current-speed walking-speed] ;; employees will leave via nearest exit when all visitor within visibility have left
     ]
+  ]
+    ;if count visitors-visible = 0 [move] ;; employees will leave via nearest exit when all visitor within visibility have left
+
 
   ask visitors [
     set fear-level sum [fear-level] of visitors in-radius 10 / count(visitors in-radius 10) ;; set the fear level to the average level of fear of visitors in neighborhood
-    if fear-level > 0.6 ;; if the fear level is higher than 0.6
-    [set evacuating? true ;; the visitors starts to evacuate
+    ifelse fear-level = 0 [
+      set fear-level jumpiness] [
+      set fear-level fear-level + 0.01 * jumpiness]
+    if fear-level > 0.6
+    [set evacuating? true
+
+
       choose-exit
     set-response-time]
     if fear-level > 0.1 [set color red]
@@ -372,6 +380,7 @@ to set-metrics
   let average-response-ticks (sum [response-time] of visitors with [evacuating? = true]) / num-visitors ;; determine average number of ticks neccessary to respond to the alarm
   set average-response-time (word (floor (average-response-ticks / 60)) " min " (round (average-response-ticks) - (floor( average-response-ticks / 60)) * 60) " sec") ;; convert ticks to minutes and seconds
   set event-duration (word (floor (ticks / 60)) " min " (ticks - (floor(ticks / 60)) * 60) " sec") ;; show ticks in minutes and seconds
+
 
 end
 @#$#@#$#@
