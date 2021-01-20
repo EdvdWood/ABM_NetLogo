@@ -148,7 +148,7 @@ to setup-visitors               ;; turtle procedure
       set running-speed 1.4]
     set current-speed walking-speed
     set evacuating? false       ;; agent is not evacuating at the start of the simulation
-    set familiar-with-exits? (random 100 < perc-familiar)  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
+    set familiar-with-exits? (random 99 < perc-familiar)  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
     choose-exit                 ;; call the procedure choose-exit to choose an exit that the agent will move to when evacuating - Note_Joel: would remove this procedure here
     set current-destination one-of patches with [pcolor = 9.9]  ;; when the agent is walking randomly at the beginning (before evacuating) the agent needs this as a destination
   ]
@@ -160,7 +160,7 @@ to setup-employees              ;;turtle procedure
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color green             ;; set the color of the agents
-    if-else random 100 < perc-female [
+    if-else random 99 < perc-female [
       set gender ["female"]][  ;; set for perc-female % of employees female
       set gender ["male"]]     ;; set the 100 - perc-female % of employees male
     set current-destination patch-here ;; employees do not move at the start
@@ -237,11 +237,12 @@ end
 to move                                   ;;turtle procedure
   crowd-control
   if-else  evacuating? = true             ;; ifelse
-  [ set current-destination destination   ;; if agent is evacuating, change heading to "destination", which is the chosen exit
+  [ if pcolor = 0 [move-to min-one-of
+    set current-destination destination   ;; if agent is evacuating, change heading to "destination", which is the chosen exit
     set path find-a-path patch-here destination
-  set optimal-path path
-  set current-path path
-  move-along-path                         ;; and make the agent move to the destination via the path found
+    set optimal-path path
+    set current-path path
+    move-along-path                         ;; and make the agent move to the destination via the path found
   ]
   [ if-else patch-here = current-destination   ;; else (agent is not evacuating), if agent is already at the current-destination, look for a new current-destination
     [set current-destination one-of patches with [pcolor = 9.9] ;;setting the new current-destination to a white patch
@@ -363,7 +364,7 @@ to avoid-obstacles              ;;turtle procedure check if there is an obstacle
   let visible-patches patches in-cone vision-distance vision-angle
   let obstacles-here visible-patches with [pcolor = 0]
 
-  if any? obstacles-here or any? dangerspots in-cone vision-distance vision-angle                ;; if there is a black patch or a fire in vision-distance then execute a random turn, and move one patch
+  if any? obstacles-here                ;; if there is a black patch or a fire in vision-distance then execute a random turn, and move one patch
   [
     if distance-nearest-obstacle obstacles-here < 2 * current-speed ; the distance we would cover in 1 step
     [ rt random 90 + 180
@@ -372,6 +373,8 @@ to avoid-obstacles              ;;turtle procedure check if there is an obstacle
     ]
 
   ]
+  if any? dangerspots in-cone (vision-distance - 10) vision-angle [
+    set enter-exit 1] ;; if agent can't get to their exit because of fire, revert to the first available exit
 
   fd current-speed               ;; agent moves forward with current speed
 

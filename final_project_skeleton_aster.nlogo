@@ -237,11 +237,12 @@ end
 to move                                   ;;turtle procedure
   crowd-control
   if-else  evacuating? = true             ;; ifelse
-  [ set current-destination destination   ;; if agent is evacuating, change heading to "destination", which is the chosen exit
+  [ if pcolor = 0 [move-to min-one-of (patches in-radius 10 with [pcolor = 9.9]) [distance myself]]
+    set current-destination destination   ;; if agent is evacuating, change heading to "destination", which is the chosen exit
     set path find-a-path patch-here destination
-  set optimal-path path
-  set current-path path
-  move-along-path                         ;; and make the agent move to the destination via the path found
+    set optimal-path path
+    set current-path path
+    move-along-path                         ;; and make the agent move to the destination via the path found
   ]
   [ if-else patch-here = current-destination   ;; else (agent is not evacuating), if agent is already at the current-destination, look for a new current-destination
     [set current-destination one-of patches with [pcolor = 9.9] ;;setting the new current-destination to a white patch
@@ -363,7 +364,7 @@ to avoid-obstacles              ;;turtle procedure check if there is an obstacle
   let visible-patches patches in-cone vision-distance vision-angle
   let obstacles-here visible-patches with [pcolor = 0]
 
-  if any? obstacles-here or any? dangerspots in-cone vision-distance vision-angle                ;; if there is a black patch or a fire in vision-distance then execute a random turn, and move one patch
+  if any? obstacles-here                ;; if there is a black patch or a fire in vision-distance then execute a random turn, and move one patch
   [
     if distance-nearest-obstacle obstacles-here < 2 * current-speed ; the distance we would cover in 1 step
     [ rt random 90 + 180
@@ -372,6 +373,8 @@ to avoid-obstacles              ;;turtle procedure check if there is an obstacle
     ]
 
   ]
+  if any? dangerspots in-cone (vision-distance - 10) vision-angle [
+    set enter-exit 1] ;; if agent can't get to their exit because of fire, revert to the first available exit
 
   fd current-speed               ;; agent moves forward with current speed
 
