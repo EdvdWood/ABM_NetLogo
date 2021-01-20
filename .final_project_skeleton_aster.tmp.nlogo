@@ -148,7 +148,7 @@ to setup-visitors               ;; turtle procedure
       set running-speed 1.4]
     set current-speed walking-speed
     set evacuating? false       ;; agent is not evacuating at the start of the simulation
-    set familiar-with-exits? (random 99 < perc-familiar)  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
+    set familiar-with-exits? (random 100 < perc-familiar)  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
     choose-exit                 ;; call the procedure choose-exit to choose an exit that the agent will move to when evacuating - Note_Joel: would remove this procedure here
     set current-destination one-of patches with [pcolor = 9.9]  ;; when the agent is walking randomly at the beginning (before evacuating) the agent needs this as a destination
   ]
@@ -160,7 +160,7 @@ to setup-employees              ;;turtle procedure
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color green             ;; set the color of the agents
-    if-else random 99 < perc-female [
+    if-else random 100 < perc-female [
       set gender ["female"]][  ;; set for perc-female % of employees female
       set gender ["male"]]     ;; set the 100 - perc-female % of employees male
     set current-destination patch-here ;; employees do not move at the start
