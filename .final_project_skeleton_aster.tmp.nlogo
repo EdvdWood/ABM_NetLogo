@@ -148,7 +148,7 @@ to setup-visitors               ;; turtle procedure
       set running-speed 1.4]
     set current-speed walking-speed
     set evacuating? false       ;; agent is not evacuating at the start of the simulation
-    set familiar-with-exits? (random 100 < perc-familiar)  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
+    set familiar-with-exits? (random 99 < perc-familiar)  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
     choose-exit                 ;; call the procedure choose-exit to choose an exit that the agent will move to when evacuating - Note_Joel: would remove this procedure here
     set current-destination one-of patches with [pcolor = 9.9]  ;; when the agent is walking randomly at the beginning (before evacuating) the agent needs this as a destination
   ]
@@ -160,7 +160,7 @@ to setup-employees              ;;turtle procedure
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color green             ;; set the color of the agents
-    if-else random 100 < perc-female [
+    if-else random 99 < perc-female [
       set gender ["female"]][  ;; set for perc-female % of employees female
       set gender ["male"]]     ;; set the 100 - perc-female % of employees male
     set current-destination patch-here ;; employees do not move at the start
@@ -258,7 +258,7 @@ end
 
 
 to crowd-control ;; make sure walking speed is reduced when in space is crowded and no more than 8 building users per square meter
-  if count turtles-here > 7 and [pcolor] of patch-here != 14.8 [ask one-of turtles-here [rt 45]] ;; if there 8 building users on a patch, one-of the buildings users turns 45 degrees. Except for the exits, where buildingsusers accumulate
+  if count turtles-here > 7 and [pcolor] of patch-here != 14.8 [ask one-of turtles-here [f 45]] ;; if there 8 building users on a patch, one-of the buildings users turns 45 degrees. Except for the exits, where buildingsusers accumulate
   set walking-speed walking-speed * (1 / (count turtles in-radius 2) ^ 2) ;; slows down buildings users non-linearly
   set running-speed running-speed * (1 / (count turtles in-radius 2) ^ 2)
 
@@ -676,7 +676,7 @@ SWITCH
 138
 alarm?
 alarm?
-0
+1
 1
 -1000
 
