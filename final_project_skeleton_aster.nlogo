@@ -259,10 +259,8 @@ end
 
 
 to crowd-control ;; make sure walking speed is reduced when in space is crowded and no more than 8 building users per square meter
-  if count turtles-here > 7 and [pcolor] of patch-here != 14.8 [ask one-of turtles-here [rt 45]] ;; if there 8 building users on a patch, one-of the buildings users turns 45 degrees. Except for the exits, where buildingsusers accumulate
-  set walking-speed walking-speed * (1 / (count turtles in-radius 2) ^ 2) ;; slows down buildings users non-linearly
-  set running-speed running-speed * (1 / (count turtles in-radius 2) ^ 2)
-
+  if count turtles-here > 7 and [pcolor] of patch-here != 14.8 [ask one-of turtles-here [rt 45 fd 1]] ;; if there 8 building users on a patch, one-of the buildings users turns 45 degrees. Except for the exits, where buildingsusers accumulate
+  set walking-speed walking-speed * (1 / (count turtles in-radius 2)) ;; slows down buildings users non-linearly
 end
 
 to evacuate
@@ -679,7 +677,7 @@ SWITCH
 138
 alarm?
 alarm?
-0
+1
 1
 -1000
 
