@@ -26,7 +26,7 @@ globals [
   astar_closed                 ;; the closed list of patches --> see astaralgorithm.nls
   optimal-path                 ;; the optimal path, list of patches from source to destination --> see astaralgorithm.nls
   alarm-time                   ;; the time at which the alarm goes off
-  signs                        ;; signs to guide people to the exit
+                          ;; signs to guide people to the exit
   danger-spots                 ;; fire!
   total-evacuation-time        ;; total time to evacuate
   average-response-time        ;; how long it took the average turtle to find the exit
@@ -37,11 +37,13 @@ globals [
   North-2-v
   East-v
   West-v
+  evacuation-started           ;;
 ]
 
 breed [visitors visitor]       ;; agents that are visitors
 breed [employees employee]     ;; agents that are employees
 breed [dangerspots dangerspot] ;; agents that are dangerspots
+breed [signs sign]
 
 turtles-own [
   current-speed                ;; the current speed of the agent, which can be running or walking
@@ -80,28 +82,34 @@ to setup
   ifelse East? [set exit-east patches with [(pcolor = 14.8) and (pxcor > 145) and (pxcor < 160)]][ask patches with [(pcolor = 14.8) and (pxcor > 145) and (pxcor < 160)] [set pcolor 0]]      ;; setup exit-east: when the patches are red and within these scoordinates, then it is this exit
   set N-evacuated 0             ;; the global variable N-evacuated is 0 at the start of the simulation
   set end_of_simulation 600     ;; maximum amount of ticks for one simulation run
-  set signs patches at-points [[93 90] [98 44] [54 148] [153 106] [78 154] [73 27] [174 28] [133 68] [182 96] [35 110]] ;; place exit signs in the building
-  ask signs [
-    set pcolor 56 ]              ;; make exit signs green
   set alarm? false              ;; the alarm is turned off at the start
   set alarm-time 30             ;; the alarm goes off after 30 seconds
-  ifelse North-1? [set North-1-v 1] [set North-1-v 0] ;; imputing booleans from the switches
+  ifelse North-1? [set North-1-v 1] [set North-1-v 0] ;; inferring booleans from the switches
   ifelse North-2? [set North-2-v 1] [set North-2-v 0]
   ifelse East? [set East-v 1] [set East-v 0]
   ifelse West? [set West-v 1] [set West-v 0]
-  set n-open-doors 0 + North-1-v + North-2-v + East-v + West-v  ;; count the number of open doors (boolean imputation please)
+  set n-open-doors 0 + North-1-v + North-2-v + East-v + West-v  ;; count the number of open doors (this would be so much easier if I could add booleans)
   setup-visitors                ;; ask turtles to perform the setup-visitors procedure
   setup-employees               ;; ask turtles to perform the setup-employees procedure
   setup-dangerspots             ;; determine the place where the danger (fire) is starting
+  setup-signs
   reset-ticks                   ;; resets the tick counter to zero, goes at the end of setup procedure
+  set evacuation-started false
 end
 
 to go                           ;; observer procedure
   if ticks = end_of_simulation [stop] ;; make a stop condition
-  if alarm? = true or ticks > alarm-time [ ;; if alarm button is pressed or after 30 seconds
-    set alarm? true            ;; turn on the alarm
-    evacuate                   ;; start the evacuating procedure
-    spread-danger]             ;; the danger (fire) is spreading slowly
+  if ticks = alarm-time [       ;; if alarm button is pressed or after 30 seconds
+    set alarm? true
+  set evacuation-started true]            ;; turn on the alarm ;; start the evacuating procedure
+
+  if evacuation-started = false and alarm? = true [start-evacuation]
+
+  if alarm? = true [
+    spread-danger
+    evacuate-visitors
+    evacuate-employees
+  ]             ;; the danger (fire) is spreading slowly
   ask visitors [move]           ;; asking the visitors to do the move procedure
   ask employees [move]
   set-metrics                 ;; determine the metrics
@@ -185,6 +193,14 @@ to setup-dangerspots ;; set one of the obstacles on fire that are close to the w
   ]
 end
 
+to setup-signs
+  let sign-locations patches at-points [[93 90] [98 44] [54 148] [153 106] [78 154] [73 27] [174 28] [133 68] [182 96] [35 110]] ;; place exit signs in the building
+  ask sign-locations [sprout-signs ]
+  set shape "box"
+  ask signs [
+    set color 56 ]              ;; make exit signs green
+end
+
 to spread-danger ;; the fire spreads to other obstacles nearby
   create-dangerspots 1 [move-to one-of patches with [(pcolor = 0) and any? patches in-radius 3 with [pcolor = 9.9] and any? dangerspots in-radius 8 and (count patches in-radius vision-distance with [pcolor = 14.8] = 0)]]
   ask dangerspots [
@@ -237,12 +253,12 @@ end
 to move                                   ;;turtle procedure
   crowd-control
   if-else  evacuating? = true             ;; ifelse
-  [ if pcolor = 0 [move-to min-one-of (patches in-radius 10 with [pcolor = 9.9]) [distance myself]]
+  [ if pcolor = 0 [move-to min-one-of (patches in-radius 25 with [pcolor = 9.9]) [distance myself]]
     set current-destination destination   ;; if agent is evacuating, change heading to "destination", which is the chosen exit
     set path find-a-path patch-here destination
     set optimal-path path
     set current-path path
-    move-along-path                         ;; and make the agent move to the destination via the path found
+    ;;move-along-path                         ;; and make the agent move to the destination via the path found
   ]
   [ if-else patch-here = current-destination   ;; else (agent is not evacuating), if agent is already at the current-destination, look for a new current-destination
     [set current-destination one-of patches with [pcolor = 9.9] ;;setting the new current-destination to a white patch
@@ -250,23 +266,26 @@ to move                                   ;;turtle procedure
       avoid-obstacles  ]                   ;; let the agent avoid obstacles while randomly walking
     [face current-destination
       avoid-obstacles]
-
-
-
   ]
 
 end
 
 
 to crowd-control ;; make sure walking speed is reduced when in space is crowded and no more than 8 building users per square meter
+  if count turtles-here > 2 [ ;; trying to optimize check
   if count turtles-here > 7 and [pcolor] of patch-here != 14.8 [ask one-of turtles-here [rt 45 fd 1]] ;; if there 8 building users on a patch, one-of the buildings users turns 45 degrees. Except for the exits, where buildingsusers accumulate
-  set walking-speed walking-speed * (1 / (count turtles in-radius 2)) ;; slows down buildings users non-linearly
+    set walking-speed walking-speed * (1 / (count turtles in-radius 2))] ;; slows down buildings users non-linearly
 end
 
-to evacuate
-   ask employees
-  [
-    let visitors-visible visitors in-cone vision-distance vision-angle
+
+to start-evacuation
+   ask visitors [
+  set fear-level jumpiness]
+end
+
+to evacuate-employees
+   ask employees [
+    let visitors-visible visitors with [evacuating? = false] in-cone vision-distance vision-angle
     ifelse count visitors-visible > 0 [
       set evacuating? false ;; if an employee sees a visitor
       ask visitors-visible [;;the visitor that is being looked at
@@ -274,11 +293,12 @@ to evacuate
           set familiar-with-exits? true ;; is being told where nearest exit is
           choose-exit ;; sets destination at nearest exit
           set-response-time
-    ]]
+      ]
+    ]
        [
-          set evacuating? true
-          choose-exit
-              set label "evacuating"
+      set evacuating? true
+      choose-exit
+      set label "evacuating"
       set label-color blue
       if-else count turtles in-radius 3 < 4 [ ;; if there are no turtles nearby, employees are running. else walking
         set current-speed running-speed][
@@ -286,54 +306,54 @@ to evacuate
     ]
   ]
     ;if count visitors-visible = 0 [move] ;; employees will leave via nearest exit when all visitor within visibility have left
+end
 
+
+to evacuate-visitors
 
   ask visitors [
-    set fear-level sum [fear-level] of visitors in-radius 10 / count(visitors in-radius 10) ;; set the fear level to the average level of fear of visitors in neighborhood
-    ifelse fear-level = 0 [
-      set fear-level jumpiness] [
-      set fear-level fear-level + 0.01 * jumpiness]
-    if fear-level > 0.6
-    [set evacuating? true
 
-
-      choose-exit
-    set-response-time]
-    if fear-level > 0.1 [set color red]
 
     let visitors-visible visitors in-cone vision-distance vision-angle
-    if count dangerspots in-cone vision-distance vision-angle > 0 ;;if a visitor can see the closest danger spot in its visible area
-    [ set evacuating? true ;; it decides to leave the building
-      choose-exit  ;; sets destination to exit
-      set fear-level 1 ;; its level of fear increases to 1
-      set-response-time
+    if fear-level < 1 and count dangerspots in-cone vision-distance vision-angle > 0 ;;if a visitor can see the closest danger spot in its visible area
+    [set fear-level 1] ;; its level of fear increases to 1
 
+    set fear-level fear-level + 0.01 * jumpiness ;; fear increases over time, as the fire alarm keeps blaring and other people start to leave the building.
+    set fear-level sum [fear-level] of visitors in-radius 10 / count(visitors in-radius 10) ;; set the fear level to the average level of fear of visitors in neighborhood
+    if fear-level > 0.1 and color = blue [set color red]
+    if fear-level > 0.6 and evacuating? = false [
+      set evacuating? true
+      choose-exit
+      set-response-time
     ]
+
 
     if evacuating? = true [ ;; if the visitor is evacuating
       set label "evacuating" set label-color blue
+      if-else count turtles in-radius 3 < 4 and fear-level > 0.9 [
+          set current-speed running-speed][
+          set current-speed walking-speed
+      ]
+
       ask visitors-visible [ ;; it tells other visitors in its visible area to do the same
         set evacuating? true
         choose-exit
         set-response-time
-        if-else count turtles in-radius 3 < 4 and fear-level > 0.9 [
-          set current-speed running-speed][
-          set current-speed walking-speed]
-
       ]
     ]
 
-    if evacuating? = true and min-one-of (signs in-cone vision-distance vision-angle) [distance myself] = 1 and random 99 < 39 ;; if visitor can see the closest signs in its visible area, it has a probability 1/4 to actually see it
+    if evacuating? = true and familiar-with-exits? = false and min-one-of (signs in-cone vision-distance vision-angle) [distance myself] = 1 and random 99 < 39 ;; if visitor can see the closest signs in its visible area, it has a probability 1/4 to actually see it
     [set familiar-with-exits? true ;; the visitor becomes familiar with the nearest exit displayed on the sign
      choose-exit ;; visitors sets destination at nearest exit
     ]
+
   ]
 
 end
 
 ; make the turtle traverse (move through) the path all the way to the destination patch
 to move-along-path
-;;AAGNEPAST
+;;AANGEPAST
  ;; show current-path
   if any? patch-set current-path
     [ifelse count patch-set current-path > 10 [repeat 10
@@ -489,7 +509,7 @@ SWITCH
 192
 debug?
 debug?
-1
+0
 1
 -1000
 
@@ -571,7 +591,7 @@ num-visitors
 num-visitors
 0
 400
-5.0
+15.0
 1
 1
 NIL
@@ -664,7 +684,7 @@ perc-adults
 perc-adults
 0
 100
-100.0
+78.0
 1
 1
 NIL
