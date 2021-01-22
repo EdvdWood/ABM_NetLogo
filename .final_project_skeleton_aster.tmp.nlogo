@@ -345,6 +345,7 @@ to evacuate-visitors
     ]
 
 
+
     if evacuating? = true [ ;; if the visitor is evacuating
       set label "evacuating" set label-color blue
       if-else count turtles in-radius 3 < 4 and fear-level > 0.9 [
