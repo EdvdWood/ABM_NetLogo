@@ -38,6 +38,7 @@ globals [
   East-v
   West-v
   evacuation-started           ;;
+
 ]
 
 breed [visitors visitor]       ;; agents that are visitors
@@ -61,8 +62,11 @@ turtles-own [
   jumpiness                    ;; How affected by fear increases the person is.
   fear-level                   ;; fear level
   response-time                ;; time it takes for a agent to respond to the alarm and start evacuating
+  evacuated?                   ;; whether an agent is evacuated
+  evacuate-time                ;; time it takes for an agent to evacuate
   perception-risk              ;;
   telling?                     ;; whether the agent is telling another agent to leave
+
 ]
 
 
@@ -94,7 +98,7 @@ to setup
   setup-visitors                ;; ask turtles to perform the setup-visitors procedure
   setup-employees               ;; ask turtles to perform the setup-employees procedure
   setup-dangerspots             ;; determine the place where the danger (fire) is starting
-  setup-signs
+  if signs? = true [setup-signs]
   reset-ticks                   ;; resets the tick counter to zero, goes at the end of setup procedure
   set evacuation-started false
 end
@@ -110,13 +114,18 @@ to go                           ;; observer procedure
 
   if evacuation-started = false and alarm? = true [start-evacuation]
 
+  ask visitors with [pcolor = 14.8 and evacuated? = false and evacuating? = true] [
+      set evacuated? true
+      set-evacuate-time
+    ]
+
   if alarm? = true [
     spread-danger
     evacuate-visitors
     evacuate-employees
   ]             ;; the danger (fire) is spreading slowly
-  ask visitors [if pcolor != 14.8 and telling? = false [move]]           ;; asking the visitors to do the move procedure
-  ask employees [if pcolor != 14.8 and telling? = false [move]]
+  ask visitors [if pcolor != 14.8 and telling? = false and evacuated? = false [move]]           ;; asking the visitors to do the move procedure
+  ask employees [if pcolor != 14.8 and telling? = false and evacuated? = false [move]]
   set-metrics                 ;; determine the metrics
   tick                          ;; next time step
 
@@ -147,7 +156,7 @@ to setup-visitors               ;; turtle procedure
     set shape "person"          ;; set the shape of the agent
     set size 1                  ;; set the size of the agent
     set color blue              ;; set the color of the agent
-    set jumpiness random-float 0.6 + 0.1
+    set jumpiness random-float 0.55 + 0.1
     if-else random 99 < perc-adults
     [set age ["adult"]]
     [set age ["child"]]
@@ -163,6 +172,7 @@ to setup-visitors               ;; turtle procedure
       set perception-risk vision-distance * 1.2]
     set current-speed walking-speed
     set telling? false
+    set evacuated? false
     set evacuating? false       ;; agent is not evacuating at the start of the simulation
     set familiar-with-exits? (random 99 < perc-familiar)  ;; set of the agent is familiar with the building or not, this will influence the exit choice in procedure choose-exit
     choose-exit                 ;; call the procedure choose-exit to choose an exit that the agent will move to when evacuating - Note_Joel: would remove this procedure here
@@ -188,6 +198,7 @@ to setup-employees              ;;turtle procedure
       set running-speed 1.2
       set perception-risk vision-distance ]
     set telling? false
+    set evacuated? false
     set current-speed walking-speed ;; agents are walking at the start
     set familiar-with-exits? true  ;; employees are familiar with the building, thus familiar-with exits? 1
     choose-exit                 ;; call the procedure choose-exit to chose an exit that the agent will move to when evacuating
@@ -271,7 +282,7 @@ to move                                   ;;turtle procedure
     if pcolor = 0 [set current-speed 0.2 * walking-speed]
     fd current-speed
   ]
-    evacuating? = true and pcolor = 14.8 [set current-destination patch-here]
+
   [ if-else patch-here = current-destination   ;; else (agent is not evacuating), if agent is already at the current-destination, look for a new current-destination
     [set current-destination one-of patches with [pcolor = 9.9] ;;setting the new current-destination to a white patch
       face current-destination            ;; and face that destination
@@ -441,6 +452,10 @@ to set-response-time ;; record the time between the number of ticks when a visit
 
 end
 
+to set-evacuate-time
+  set evacuate-time ticks - alarm-time
+end
+
 to set-metrics
  set N-evacuated count turtles-on patches with [pcolor =  14.8] ;; count turtles that reached the exits
   let average-response-ticks (sum [response-time] of visitors with [evacuating? = true]) / num-visitors ;; determine average number of ticks neccessary to respond to the alarm
@@ -548,7 +563,7 @@ vision-distance
 vision-distance
 0
 100
-10.0
+50.0
 1
 1
 NIL
@@ -640,7 +655,7 @@ perc-familiar
 perc-familiar
 0
 100
-100.0
+50.0
 1
 1
 NIL
@@ -760,7 +775,7 @@ SWITCH
 415
 West?
 West?
-1
+0
 1
 -1000
 
@@ -771,7 +786,18 @@ SWITCH
 430
 East?
 East?
+0
 1
+-1000
+
+SWITCH
+1577
+465
+1680
+498
+signs?
+signs?
+0
 1
 -1000
 
@@ -1122,12 +1148,13 @@ NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="Main Exit" repetitions="10" runMetricsEveryStep="true">
+  <experiment name="Main Exit" repetitions="10" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
-    <metric>["Evacuated agents"]</metric>
-    <metric>["Average Response Time"]</metric>
-    <metric>["Event Duration"]</metric>
+    <metric>[response-time] of visitors</metric>
+    <metric>[evacuating?] of visitors</metric>
+    <metric>[evacuate-time] of visitors</metric>
+    <metric>[evacuated?] of visitors</metric>
     <enumeratedValueSet variable="perc-adults">
       <value value="90"/>
     </enumeratedValueSet>
@@ -1171,6 +1198,717 @@ NetLogo 6.1.1
       <value value="100"/>
     </enumeratedValueSet>
     <enumeratedValueSet variable="North-2?">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="All Exits" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>[response-time] of visitors</metric>
+    <metric>[evacuating?] of visitors</metric>
+    <metric>[evacuate-time] of visitors</metric>
+    <metric>[evacuated?] of visitors</metric>
+    <enumeratedValueSet variable="perc-adults">
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-distance">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="East?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bump-distance">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="West?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-angle">
+      <value value="210"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-female">
+      <value value="28"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="verbose?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-familiar">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-1?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-visitors">
+      <value value="400"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alarm?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-staff">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-2?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="signs?">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="North by NorthWest" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>[response-time] of visitors</metric>
+    <metric>[evacuating?] of visitors</metric>
+    <metric>[evacuate-time] of visitors</metric>
+    <metric>[evacuated?] of visitors</metric>
+    <enumeratedValueSet variable="perc-adults">
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-distance">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="East?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bump-distance">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="West?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-angle">
+      <value value="210"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-female">
+      <value value="28"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="verbose?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-familiar">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-1?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-visitors">
+      <value value="400"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alarm?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-staff">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-2?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="signs?">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="North by NorthEast" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>[response-time] of visitors</metric>
+    <metric>[evacuating?] of visitors</metric>
+    <metric>[evacuate-time] of visitors</metric>
+    <metric>[evacuated?] of visitors</metric>
+    <enumeratedValueSet variable="perc-adults">
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-distance">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="East?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bump-distance">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="West?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-angle">
+      <value value="210"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-female">
+      <value value="28"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="verbose?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-familiar">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-1?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-visitors">
+      <value value="400"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alarm?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-staff">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-2?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="signs?">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="EastWest" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>[response-time] of visitors</metric>
+    <metric>[evacuating?] of visitors</metric>
+    <metric>[evacuate-time] of visitors</metric>
+    <metric>[evacuated?] of visitors</metric>
+    <enumeratedValueSet variable="perc-adults">
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-distance">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="East?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bump-distance">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="West?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-angle">
+      <value value="210"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-female">
+      <value value="28"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="verbose?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-familiar">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-1?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-visitors">
+      <value value="400"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alarm?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-staff">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-2?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="signs?">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="East" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>[response-time] of visitors</metric>
+    <metric>[evacuating?] of visitors</metric>
+    <metric>[evacuate-time] of visitors</metric>
+    <metric>[evacuated?] of visitors</metric>
+    <enumeratedValueSet variable="perc-adults">
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-distance">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="East?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bump-distance">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="West?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-angle">
+      <value value="210"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-female">
+      <value value="28"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="verbose?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-familiar">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-1?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-visitors">
+      <value value="400"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alarm?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-staff">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-2?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="signs?">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Weast" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>[response-time] of visitors</metric>
+    <metric>[evacuating?] of visitors</metric>
+    <metric>[evacuate-time] of visitors</metric>
+    <metric>[evacuated?] of visitors</metric>
+    <enumeratedValueSet variable="perc-adults">
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-distance">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="East?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bump-distance">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="West?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-angle">
+      <value value="210"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-female">
+      <value value="28"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="verbose?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-familiar">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-1?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-visitors">
+      <value value="400"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alarm?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-staff">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-2?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="signs?">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="NoSigns" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>[response-time] of visitors</metric>
+    <metric>[evacuating?] of visitors</metric>
+    <metric>[evacuate-time] of visitors</metric>
+    <metric>[evacuated?] of visitors</metric>
+    <enumeratedValueSet variable="perc-adults">
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-distance">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="East?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bump-distance">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="West?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-angle">
+      <value value="210"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-female">
+      <value value="28"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="verbose?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-familiar">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-1?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-visitors">
+      <value value="400"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alarm?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-staff">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-2?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="signs?">
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Signs" repetitions="10" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>[response-time] of visitors</metric>
+    <metric>[evacuating?] of visitors</metric>
+    <metric>[evacuate-time] of visitors</metric>
+    <metric>[evacuated?] of visitors</metric>
+    <enumeratedValueSet variable="perc-adults">
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-distance">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="East?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bump-distance">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="West?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-angle">
+      <value value="210"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-female">
+      <value value="28"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="verbose?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-familiar">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-1?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-visitors">
+      <value value="400"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alarm?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-staff">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-2?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="signs?">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Familiarity" repetitions="5" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>[response-time] of visitors</metric>
+    <metric>[evacuating?] of visitors</metric>
+    <metric>[evacuate-time] of visitors</metric>
+    <metric>[evacuated?] of visitors</metric>
+    <enumeratedValueSet variable="perc-adults">
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-distance">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="East?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bump-distance">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="West?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-angle">
+      <value value="210"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-female">
+      <value value="28"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="verbose?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-familiar">
+      <value value="10"/>
+      <value value="20"/>
+      <value value="30"/>
+      <value value="40"/>
+      <value value="50"/>
+      <value value="60"/>
+      <value value="70"/>
+      <value value="80"/>
+      <value value="90"/>
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-1?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-visitors">
+      <value value="400"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alarm?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-staff">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-2?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="signs?">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Gender" repetitions="5" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>[response-time] of visitors</metric>
+    <metric>[evacuating?] of visitors</metric>
+    <metric>[evacuate-time] of visitors</metric>
+    <metric>[evacuated?] of visitors</metric>
+    <enumeratedValueSet variable="perc-adults">
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-distance">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="East?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bump-distance">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="West?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-angle">
+      <value value="210"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-female">
+      <value value="10"/>
+      <value value="20"/>
+      <value value="30"/>
+      <value value="40"/>
+      <value value="50"/>
+      <value value="60"/>
+      <value value="70"/>
+      <value value="80"/>
+      <value value="90"/>
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="verbose?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-familiar">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-1?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-visitors">
+      <value value="400"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alarm?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-staff">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-2?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="signs?">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Vision Cone" repetitions="5" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>[response-time] of visitors</metric>
+    <metric>[evacuating?] of visitors</metric>
+    <metric>[evacuate-time] of visitors</metric>
+    <metric>[evacuated?] of visitors</metric>
+    <enumeratedValueSet variable="perc-adults">
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-distance">
+      <value value="10"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="East?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bump-distance">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="West?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-angle">
+      <value value="45"/>
+      <value value="90"/>
+      <value value="135"/>
+      <value value="180"/>
+      <value value="210"/>
+      <value value="225"/>
+      <value value="270"/>
+      <value value="315"/>
+      <value value="360"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-female">
+      <value value="28"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="verbose?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-familiar">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-1?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-visitors">
+      <value value="400"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alarm?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-staff">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-2?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="signs?">
+      <value value="true"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="Vision Distance" repetitions="5" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <metric>[response-time] of visitors</metric>
+    <metric>[evacuating?] of visitors</metric>
+    <metric>[evacuate-time] of visitors</metric>
+    <metric>[evacuated?] of visitors</metric>
+    <enumeratedValueSet variable="perc-adults">
+      <value value="90"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-distance">
+      <value value="2"/>
+      <value value="4"/>
+      <value value="6"/>
+      <value value="8"/>
+      <value value="10"/>
+      <value value="12"/>
+      <value value="14"/>
+      <value value="16"/>
+      <value value="18"/>
+      <value value="20"/>
+      <value value="25"/>
+      <value value="30"/>
+      <value value="40"/>
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="East?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="bump-distance">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="West?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="vision-angle">
+      <value value="210"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-female">
+      <value value="28"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="verbose?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="perc-familiar">
+      <value value="50"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-1?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-visitors">
+      <value value="400"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="alarm?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="debug?">
+      <value value="false"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="num-staff">
+      <value value="100"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="North-2?">
+      <value value="true"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="signs?">
       <value value="true"/>
     </enumeratedValueSet>
   </experiment>
