@@ -492,6 +492,23 @@ ticks
 30.0
 
 BUTTON
+0
+0
+0
+0
+NIL
+NIL
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
 10
 10
 83
@@ -662,10 +679,10 @@ NIL
 HORIZONTAL
 
 MONITOR
-25
-902
-157
-947
+36
+1022
+168
+1067
 Total evacuation time
 total-evacuation-time
 17
@@ -673,10 +690,10 @@ total-evacuation-time
 11
 
 MONITOR
-25
-735
-138
-780
+36
+855
+149
+900
 Evacuated agents
 N-evacuated
 17
@@ -684,10 +701,10 @@ N-evacuated
 11
 
 MONITOR
-25
-791
-172
-836
+36
+911
+183
+956
 Average Response Time
 average-response-time
 17
@@ -736,10 +753,10 @@ alarm?
 -1000
 
 MONITOR
-26
-846
-122
-891
+37
+966
+133
+1011
 Event Duration
 event-duration
 17
