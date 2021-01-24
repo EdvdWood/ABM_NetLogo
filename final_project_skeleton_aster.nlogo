@@ -532,7 +532,7 @@ SWITCH
 138
 verbose?
 verbose?
-1
+0
 1
 -1000
 
@@ -563,7 +563,7 @@ vision-distance
 vision-distance
 0
 100
-50.0
+26.0
 1
 1
 NIL
@@ -610,7 +610,7 @@ bump-distance
 bump-distance
 0
 3
-2.0
+1.0
 1
 1
 NIL
@@ -625,7 +625,7 @@ num-visitors
 num-visitors
 0
 400
-400.0
+176.0
 1
 1
 NIL
@@ -640,7 +640,7 @@ num-staff
 num-staff
 0
 100
-100.0
+11.0
 1
 1
 NIL
@@ -655,7 +655,7 @@ perc-familiar
 perc-familiar
 0
 100
-50.0
+49.0
 1
 1
 NIL
